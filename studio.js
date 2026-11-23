@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {EQUIPMENT_TYPES,parseProject,validateLayout} from './geometry.js';
 const $=id=>document.getElementById(id), STORAGE='ingebam.factorytwins.studio.v03';
-const types={conveyor:'Cinta transportadora',mixer:'Mezcladora industrial',coldroom:'Cámara frigorífica',packager:'Envasadora',compressor:'Compresor',tank:'Estanque industrial',rack:'Rack de almacenamiento'};
+const types=EQUIPMENT_TYPES;
 const clone=x=>JSON.parse(JSON.stringify(x));
 const demo=()=>({schema:'ingebam.factorytwins.project',version:1,name:'Planta piloto INGEBAM',site:{width:27,depth:19},equipment:[
 {id:'M01',kind:'conveyor',label:'Cinta transportadora',x:-7,z:-5,w:5,d:2.2,h:1.8,rotation:0},
@@ -12,27 +13,7 @@ const demo=()=>({schema:'ingebam.factorytwins.project',version:1,name:'Planta pi
 {id:'M06',kind:'compressor',label:'Compresor central',x:7,z:6,w:4.5,d:3,h:2.6,rotation:0}
 ]});
 let project=demo(),selected='M04',history=[],future=[],dirty=false,revision=0;
-const plain=s=>String(s).replace(/[<>]/g,'').trim();
-const finite=(v,min,max)=>Number.isFinite(v)&&v>=min&&v<=max;
-function parseProject(v){
- if(!v||typeof v!=='object'||Array.isArray(v)||v.schema!=='ingebam.factorytwins.project'||v.version!==1)throw Error('Formato de proyecto incompatible.');
- if(typeof v.name!=='string'||v.name.length>80||!v.name.trim())throw Error('Nombre de proyecto inválido.');
- if(!v.site||!finite(v.site.width,12,120)||!finite(v.site.depth,12,120))throw Error('Dimensiones de planta inválidas.');
- if(!Array.isArray(v.equipment)||v.equipment.length>150)throw Error('Número de equipos no permitido (máximo 150).');
- const ids=new Set();
- for(const e of v.equipment){
-  if(!e||typeof e!=='object'||typeof e.id!=='string'||!/^[a-zA-Z0-9_-]{1,36}$/.test(e.id)||ids.has(e.id))throw Error('Identificador duplicado o inválido.');
-  ids.add(e.id);
-  if(!(e.kind in types)||typeof e.label!=='string'||!e.label.trim()||e.label.length>65)throw Error('Tipo o nombre de equipo inválido.');
-  if(!finite(e.x,-120,120)||!finite(e.z,-120,120)||!finite(e.w,.5,30)||!finite(e.d,.5,30)||!finite(e.h,.5,20)||!finite(e.rotation,-360000,360000))throw Error('Coordenadas o dimensiones inválidas.');
- }
- return {schema:v.schema,version:1,name:plain(v.name),site:{width:v.site.width,depth:v.site.depth},equipment:v.equipment.map(e=>({id:e.id,kind:e.kind,label:plain(e.label),x:e.x,z:e.z,w:e.w,d:e.d,h:e.h,rotation:e.rotation}))};
-}
-function orientedCorners(e){const a=e.rotation*Math.PI/180,c=Math.cos(a),s=Math.sin(a),hx=e.w/2,hz=e.d/2;return [[-hx,-hz],[hx,-hz],[hx,hz],[-hx,hz]].map(([x,z])=>[e.x+x*c-z*s,e.z+x*s+z*c]);}
-function sat(a,b){const P=[a,b];for(const shape of P)for(let i=0;i<4;i++){const p=shape[i],q=shape[(i+1)%4],ax=-(q[1]-p[1]),az=q[0]-p[0];const proj=pts=>pts.map(p=>p[0]*ax+p[1]*az);const av=proj(a),bv=proj(b);if(Math.max(...av)<=Math.min(...bv)+.001||Math.max(...bv)<=Math.min(...av)+.001)return false;}return true;}
-function validate(p){const errors=[],perId={};for(const e of p.equipment){const pts=orientedCorners(e),within=pts.every(([x,z])=>Math.abs(x)<=p.site.width/2-.1&&Math.abs(z)<=p.site.depth/2-.1);if(!within){errors.push(e.label+': fuera del perímetro (margen de 10 cm).');perId[e.id]=true;}}
- for(let i=0;i<p.equipment.length;i++)for(let j=i+1;j<p.equipment.length;j++){const a=p.equipment[i],b=p.equipment[j];if(sat(orientedCorners(a),orientedCorners(b))){errors.push('Colisión: '+a.label+' / '+b.label);perId[a.id]=true;perId[b.id]=true;}}
- return {errors,perId};}
+const validate=validateLayout;
 const container=$('viewport'),scene=new THREE.Scene();scene.background=new THREE.Color(0x132838);
 const camera=new THREE.PerspectiveCamera(44,1,.1,300);camera.position.set(23,24,31);
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.4;
