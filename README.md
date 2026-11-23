@@ -26,3 +26,27 @@ El software no realiza solicitudes de red, no consulta sensores reales y no alma
 Habilitar GitHub Pages desde Settings → Pages → Deploy from a branch → main / root.
 
 URL prevista: https://man-nuel-b.github.io/INGEBAM-FactoryTwins-/
+
+
+## Factory Twins Studio V0.3 (editor independiente)
+Abrir `studio.html` o, con GitHub Pages habilitado: https://man-nuel-b.github.io/INGEBAM-FactoryTwins-/studio.html
+
+Funciones implementadas:
+- Inventario de equipos y modelos geométricos conceptuales en Three.js.
+- Selección por clic en escena o por listado.
+- Alta, duplicación, eliminación y edición numérica de posición, dimensiones y rotación.
+- Nave con dimensiones modificables.
+- Validación geométrica de colisiones 2D entre rectángulos orientados (SAT) y límites interiores de nave.
+- Deshacer/rehacer, almacenamiento local, exportación e importación JSON con validación estructural.
+- Sin conexión a Internet salvo descarga de dependencias Three.js desde CDN.
+
+**Limitaciones comerciales:** La revisión es geométrica preliminar y NO incluye separación de seguridad, accesos, evacuación, diseño eléctrico, estructural ni normativa industrial. No hay autenticación, colaboración, base de datos remota, reconocimiento de imágenes, telemetría real ni modelos predictivos. La importación local sustituye el proyecto abierto, tras confirmar. No cargar proyectos confidenciales en equipos compartidos.
+
+### Próximas puertas de calidad antes de producción
+1. Pruebas de interfaz automatizadas y regresión geométrica, evaluación móvil y WebGL.
+2. Persistencia segura por organización, autenticación/roles, auditoría y respaldos.
+3. Reconstrucción fotográfica asistida (con indicadores de incertidumbre) y modelos GLB.
+4. Pipeline de sensores de solo lectura con gateway segregado y datos históricos.
+5. Validación con ingenieros responsables y pilotos industriales antes de comercialización operativa.
+
+El editor no reemplaza la aplicación de monitorización V0.2: ambos conviven en el mismo repositorio.
