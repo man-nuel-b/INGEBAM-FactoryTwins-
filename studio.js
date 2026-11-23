@@ -77,6 +77,26 @@ $('import').onclick=()=>$('file').click();
 $('file').onchange=async()=>{const file=$('file').files?.[0];$('file').value='';if(!file)return;if(file.size>1024*1024){alert('El archivo supera 1 MB');return}try{const p=parseProject(JSON.parse(await file.text()));if(!confirm('¿Reemplazar el proyecto actual con '+p.name+'?'))return;history.push(clone(project));future=[];project=p;selected=project.equipment[0]?.id||null;renderAll();status('Proyecto JSON importado')}catch(e){alert('Importación rechazada: '+e.message)}};
 $('reset').onclick=()=>{if(!confirm('¿Restaurar la demostración? Se perderán los cambios sin guardar.'))return;history.push(clone(project));future=[];project=demo();selected='M04';renderAll();status('Planta demostrativa restaurada')};
 $('help').onclick=()=>$('guide').showModal();
+
+// Local, session-only reference photograph; it is NOT a 3D reconstruction.
+let photoUrl=null;
+$('photo').addEventListener('change',()=>{
+ const file=$('photo').files?.[0];if(!file)return;
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>8*1024*1024){
+  alert('Selecciona JPG, PNG o WebP de hasta 8 MB.');$('photo').value='';return;
+ }
+ if(photoUrl)URL.revokeObjectURL(photoUrl);
+ photoUrl=URL.createObjectURL(file);
+ $('preview').src=photoUrl;$('photobox').hidden=false;
+ status('Referencia cargada localmente: '+file.name);
+});
+$('clearPhoto').addEventListener('click',()=>{
+ if(photoUrl)URL.revokeObjectURL(photoUrl);
+ photoUrl=null;$('preview').removeAttribute('src');$('photo').value='';$('photobox').hidden=true;
+ status('Imagen de referencia retirada');
+});
+window.addEventListener('pagehide',()=>{if(photoUrl)URL.revokeObjectURL(photoUrl)});
+
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let down=null;
 renderer.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY}});
 renderer.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down.x,e.clientY-down.y)>6){down=null;return}down=null;const b=renderer.domElement.getBoundingClientRect();pointer.set(2*(e.clientX-b.left)/b.width-1,1-2*(e.clientY-b.top)/b.height);ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(pickables)[0];if(hit)select(hit.object.userData.machineId)});
