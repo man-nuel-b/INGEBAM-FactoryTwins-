@@ -50,3 +50,12 @@ Funciones implementadas:
 5. Validación con ingenieros responsables y pilotos industriales antes de comercialización operativa.
 
 El editor no reemplaza la aplicación de monitorización V0.2: ambos conviven en el mismo repositorio.
+
+## Hito de calidad V0.3.1
+- Se extrajo `geometry.js` como módulo puro, separado de Three.js, para validación de archivos JSON y geometría SAT.
+- Pruebas manuales automatizadas en navegador: `tests.html` / `geometry-tests.js` (13 verificaciones previstas); abrir https://man-nuel-b.github.io/INGEBAM-FactoryTwins-/tests.html para ejecutarlas y consultar el resultado. Todavía no se ha comprobado su ejecución en un navegador real.
+- `studio.html` incluye ahora una carga de foto local con filtro MIME y límite de 8 MB. Es únicamente una referencia visual, **no reconstrucción por IA**. La fotografía no se conserva al recargar, no se incluye en el JSON y no se transmite a servidores por código propio.
+- Se mantiene la validación de colisiones, límites de la nave, historial de edición y exportación.
+
+### Restricciones antes de vender
+No hay pruebas de regresión de interfaz verificadas en navegadores reales, pruebas de seguridad, backend multiusuario, trazabilidad industrial ni aceptación de un cliente piloto. No usar la demo como herramienta para seguridad operacional.
