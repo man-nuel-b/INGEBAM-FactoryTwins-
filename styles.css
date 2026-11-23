@@ -10,3 +10,5 @@
 #floorwrap[hidden],#factory3d[hidden]{display:none!important}
 #floorwrap{padding:0 2px}
 @media(max-width:610px){.viewbar{padding:0 12px 12px}.factory3d{height:360px;margin:0 8px}.viewbar button{padding:7px 10px}}
+
+.studio-link{display:inline-flex;align-items:center;padding:11px 14px;border-radius:10px;background:#47d7c2;color:#092932;text-decoration:none;font-weight:750}.studio-link:hover{background:#7ee9d7}
