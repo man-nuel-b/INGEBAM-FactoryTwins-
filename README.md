@@ -90,3 +90,16 @@ La imagen **no** se carga a servidores, no se exporta ni permanece en almacenami
 **Limitación principal:** Una fotografía perspectiva única puede presentar oclusión, distorsión o no mostrar cuatro esquinas reales del piso. Una homografía solo describe un plano. Alturas de máquinas, superficies fuera del plano y partes ocultas requieren medición y corrección manual. No vender como fotogrametría, CAD as-built o medición profesional.
 
 Pruebas de calibración previstas en [photo-tests.html](https://man-nuel-b.github.io/INGEBAM-FactoryTwins-/photo-tests.html). La existencia del código de pruebas no implica que se hayan ejecutado con éxito en todos los navegadores.
+
+## Photo Mapper V0.5 — sugerencias experimentales de regiones
+- `photo-regions.js`: procesador local de bordes basado en gradientes y regiones de alta densidad de contraste.
+- La interfaz presenta hasta ocho regiones sugeridas y permite aceptarlas manualmente como posiciones de equipos o descartarlas.
+- La clasificación de la máquina, dimensiones y verificación de su ubicación siguen siendo responsabilidad del usuario. **No se trata de detección industrial por IA**, ni la puntuación de contraste es una probabilidad de identificación.
+- Añadida validación para rechazar la colocación de centros fuera del perímetro calibrado.
+- `package.json`, `node-tests.mjs` y `.github/workflows/factory-ci.yml` agregan pruebas ejecutadas automáticamente en GitHub Actions con Node.js 22.
+- El despliegue en GitHub Pages sigue siendo una demo estática; ninguna imagen se transmite a la nube mediante Photo Mapper.
+
+### Objetivos del próximo hito
+1. Corregir todos los fallos de CI y validar en un navegador real la carga de imagen, calibración y transferencia a Studio.
+2. Añadir un adaptador opcional de visión artificial con clasificación verificable en imágenes industriales de prueba.
+3. Añadir pruebas de interfaz (incluyendo WebGL y móvil), sin sustituir la validación técnica en terreno.
