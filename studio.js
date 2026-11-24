@@ -191,6 +191,18 @@ $('rotateLeft').onclick=()=>rotateSelected(-15);
 $('rotateRight').onclick=()=>rotateSelected(15);
 const ro=new ResizeObserver(()=>{const w=container.clientWidth,h=container.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)});ro.observe(container);
 let last=0;function frame(t){requestAnimationFrame(frame);if(document.hidden)return;last=t;controls.update();renderer.render(scene,camera)}requestAnimationFrame(frame);
-try{const saved=localStorage.getItem(STORAGE);if(saved)project=parseProject(JSON.parse(saved))}catch(e){status('No se pudo restaurar proyecto local: '+e.message)}
-selected=project.equipment[0]?.id||null;renderAll();status('Editor listo · datos locales');
+try{
+ const transfer=sessionStorage.getItem('ingebam.factorytwins.photomapper.transfer.v1');
+ if(transfer){
+  const incoming=parseProject(JSON.parse(transfer));
+  project=incoming;
+  sessionStorage.removeItem('ingebam.factorytwins.photomapper.transfer.v1');
+  dirty=true;
+  status('Modelo fotográfico transferido. Revisa su geometría y guarda el proyecto.');
+ }else{
+  const saved=localStorage.getItem(STORAGE);
+  if(saved)project=parseProject(JSON.parse(saved));
+ }
+}catch(e){status('No se pudo recuperar el proyecto: '+e.message)}
+selected=project.equipment[0]?.id||null;renderAll();if(!dirty)status('Editor listo · datos locales');
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
