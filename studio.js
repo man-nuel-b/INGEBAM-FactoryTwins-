@@ -96,6 +96,15 @@ $('home').onclick=()=>{camera.position.set(23,24,31);controls.target.set(0,0,0);
 $('check').onclick=()=>{const n=audit().errors.length;status(n?n+' observaciones detectadas':'Distribución validada geométricamente')};
 $('save').onclick=()=>{try{localStorage.setItem(STORAGE,JSON.stringify(project));dirty=false;status('Proyecto guardado en este navegador')}catch(e){alert('No se pudo guardar localmente: '+e.message)}};
 $('export').onclick=()=>{const data=JSON.stringify({...project,exportedAt:new Date().toISOString(),simulated:true},null,2),blob=new Blob([data],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='factory-twins-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);status('JSON descargado')};
+$('monitor').onclick=()=>{
+ try{
+  const p=parseProject(project),errors=validate(p).errors;
+  if(errors.length&&!confirm('El diseño tiene '+errors.length+' observaciones geométricas. ¿Abrir igualmente la simulación?'))return;
+  sessionStorage.setItem('ingebam.factorytwins.monitor.transfer.v1',JSON.stringify(p));
+  // Intentional navigation: the image reference is never transferred, only validated geometry.
+  location.href='./operations.html';
+ }catch(err){status('No se pudo abrir el monitor: '+err.message)}
+};
 $('import').onclick=()=>$('file').click();
 $('file').onchange=async()=>{const file=$('file').files?.[0];$('file').value='';if(!file)return;if(file.size>1024*1024){alert('El archivo supera 1 MB');return}try{const p=parseProject(JSON.parse(await file.text()));if(!confirm('¿Reemplazar el proyecto actual con '+p.name+'?'))return;history.push(clone(project));future=[];project=p;selected=project.equipment[0]?.id||null;renderAll();status('Proyecto JSON importado')}catch(e){alert('Importación rechazada: '+e.message)}};
 $('reset').onclick=()=>{if(!confirm('¿Restaurar la demostración? Se perderán los cambios sin guardar.'))return;history.push(clone(project));future=[];project=demo();selected='M04';renderAll();status('Planta demostrativa restaurada')};
