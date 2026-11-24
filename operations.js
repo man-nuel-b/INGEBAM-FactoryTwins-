@@ -82,21 +82,23 @@ async function initialise3D(){
   const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=Math.PI/2.04;
   const roots=new THREE.Group();scene.add(roots);
   const ids=new Map(),ray=new THREE.Raycaster(),point=new THREE.Vector2();
+  const objectsById=new Map();let layoutFingerprint='';
   const materials={floor:new THREE.MeshStandardMaterial({color:0x344f60,roughness:.9}),machine:new THREE.MeshStandardMaterial({color:0x829faa,metalness:.5,roughness:.48}),selected:new THREE.MeshStandardMaterial({color:0x39ddc1}),alert:new THREE.MeshStandardMaterial({color:0xe6a55c})};
   let geometries=[],current=state;
-  const clear=()=>{for(const g of geometries)g.dispose();geometries=[];roots.clear();ids.clear()};
+  const clear=()=>{for(const g of geometries)g.dispose();geometries=[];roots.clear();ids.clear();objectsById.clear()};
   const box=(w,h,d,mat,x,y,z,parent,id)=>{
    const g=new THREE.BoxGeometry(w,h,d);geometries.push(g);
    const o=new THREE.Mesh(g,mat);o.position.set(x,y,z);parent.add(o);if(id)ids.set(o,id);return o;
   };
   const rebuild=()=>{
-   clear();const {width,depth}=current.layout.site;
+   clear();layoutFingerprint=JSON.stringify(current.layout);
+   const {width,depth}=current.layout.site;
    box(width,.25,depth,materials.floor,0,-.2,0,roots,null);
    for(const e of current.layout.equipment){
     const a=current.assets.find(x=>x.id===e.id),g=new THREE.Group();
     g.position.set(e.x,0,e.z);g.rotation.y=-e.rotation*Math.PI/180;roots.add(g);
     const mat=assetStatus(a)==='WARN'?materials.alert:e.id===current.selected?materials.selected:materials.machine;
-    box(e.w,e.h*.76,e.d,mat,0,e.h*.45,0,g,e.id);
+    const mesh=box(e.w,e.h*.76,e.d,mat,0,e.h*.45,0,g,e.id);objectsById.set(e.id,mesh);
    }
   };
   const resize=()=>{
@@ -118,7 +120,11 @@ async function initialise3D(){
    Object.values(materials).forEach(m=>m.dispose());renderer.dispose();
   };
   window.addEventListener('pagehide',dispose,{once:true});
-  three={setLayout(layout){current={...current,layout};rebuild();resize()},updateState(next){current=next;rebuild();resize()},resize,dispose};
+  three={setLayout(layout){current={...current,layout};rebuild();resize()},updateState(next){
+    current=next;
+    if(JSON.stringify(next.layout)!==layoutFingerprint){rebuild();resize();return}
+    for(const a of next.assets){const mesh=objectsById.get(a.id);if(mesh)mesh.material=assetStatus(a)==='WARN'?materials.alert:a.id===next.selected?materials.selected:materials.machine}
+   },resize,dispose};
   rebuild();resize();return three;
  }catch(e){
   console.error('Vista 3D no disponible',e);if(loading)loading.textContent='No se pudo inicializar WebGL o descargar Three.js. Usa el plano 2D.';
