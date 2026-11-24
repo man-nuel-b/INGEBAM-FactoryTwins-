@@ -67,3 +67,38 @@ test('calibration rejects intersecting quadrilateral',()=>{
 test('calibration rejects very small area',()=>{
   assert.throws(()=>validateCorners([[0,0],[.01,0],[.01,.01],[0,.01]]));
 });
+
+test('pilot has explicit simulated tenant and plant identifiers',async()=>{
+ const {createPilot}=await import('./pilot-engine.js');
+ const p=createPilot();assert.equal(p.mode,'SIMULATED');assert.equal(p.tenantId,'demo-ingebam');assert.equal(p.assets.length,3);
+});
+test('cold room anomaly eventually generates one threshold incident',async()=>{
+ const {createPilot,stepPilot}=await import('./pilot-engine.js');
+ let p=createPilot();for(let i=0;i<35;i++)p=stepPilot(p);
+ assert.ok(p.incidents.some(e=>e.assetId==='CF-02'&&e.type==='THRESHOLD'));
+ assert.ok(p.readings.length===105);
+});
+test('pilot deterministic readings for same seed and tick times',async()=>{
+ const {createPilot,stepPilot}=await import('./pilot-engine.js');
+ let a=createPilot({seed:22}),b=createPilot({seed:22});
+ for(let i=0;i<8;i++){const options={tickTime:new Date(2026,0,1,0,5*i).toISOString()};a=stepPilot(a,options);b=stepPilot(b,options)}
+ assert.deepEqual(a,b);
+});
+test('pilot incident can only be acknowledged once',async()=>{
+ const {createPilot,stepPilot,acknowledgeIncident}=await import('./pilot-engine.js');
+ let p=createPilot();for(let i=0;i<35;i++)p=stepPilot(p);
+ const id=p.incidents[0].id;p=acknowledgeIncident(p,id,{at:'2026-01-01T00:00:00Z'});
+ assert.equal(p.incidents[0].state,'ACKNOWLEDGED');
+ assert.throws(()=>acknowledgeIncident(p,id));
+});
+test('maintenance only accepts a known asset',async()=>{
+ const {createPilot,registerMaintenance}=await import('./pilot-engine.js');
+ assert.throws(()=>registerMaintenance(createPilot(),'UNKNOWN'));
+ const p=registerMaintenance(createPilot(),'CF-02',{note:'Inspección de prueba',at:'2026-01-01T00:00:00Z'});
+ assert.equal(p.maintenance.length,1);
+});
+test('pilot summary calculates energy as kWh rather than kW',async()=>{
+ const {createPilot,stepPilot,summarize}=await import('./pilot-engine.js');
+ const p=stepPilot(createPilot()),s=summarize(p);
+ assert.ok(s.kwh>0&&s.kwh<s.kw);
+});
