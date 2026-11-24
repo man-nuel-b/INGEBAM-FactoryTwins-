@@ -22,6 +22,7 @@ jobs:
           node --check photo-mapper.js
           node --check photo-regions.js
           node --check photo-geometry.js
+          node --check photo-layout.js
           node --check photo-ai.js
           node --check factory3d.js
           node --check geometry.js
