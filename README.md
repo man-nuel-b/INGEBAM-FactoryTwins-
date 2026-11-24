@@ -103,3 +103,14 @@ Pruebas de calibración previstas en [photo-tests.html](https://man-nuel-b.githu
 1. Corregir todos los fallos de CI y validar en un navegador real la carga de imagen, calibración y transferencia a Studio.
 2. Añadir un adaptador opcional de visión artificial con clasificación verificable en imágenes industriales de prueba.
 3. Añadir pruebas de interfaz (incluyendo WebGL y móvil), sin sustituir la validación técnica en terreno.
+
+## V0.6 — Detección IA genérica y revisión humana
+- `photo-ai.js` integra **TensorFlow.js 4.22.0 + COCO-SSD 2.2.3** bajo demanda en el navegador; pesos y scripts se descargan externamente solo al activar el botón. Requiere conexión a Internet y compatibilidad del navegador.
+- COCO-SSD puede sugerir categorías habituales (por ejemplo, refrigerador o vehículo). **No es un detector de maquinaria industrial** y carece de categorías específicas para gran parte de los equipos fabriles.
+- Cada caja detectada aparece con etiqueta y puntuación del detector. Los resultados **no se insertan automáticamente**: el usuario debe calibrar el piso y aprobar o descartar. Al aceptar, se aproxima el punto de apoyo con el centro inferior de la caja y se elige manualmente el tipo de máquina y sus dimensiones.
+- La fotografía se procesa en memoria del navegador con TensorFlow.js. El código propio no sube la imagen, aunque el navegador descarga librerías y pesos desde proveedores de terceros. No utilizar fotografías confidenciales sin autorizar previamente las dependencias y políticas del entorno.
+- Si el modelo falla, Photo Mapper mantiene los flujos manuales y de regiones por contraste.
+- `Factory Twins CI` prueba sintaxis de módulos y suite Node.js, incluyendo restricciones de tipos COCO y validación de entradas.
+
+### Pendiente de validación
+Este hito aún necesita pruebas de detección en imágenes industriales reales autorizadas, precisión por categoría, tiempos de carga y rendimiento en equipos modestos. No debe utilizarse como reconstrucción industrial precisa ni sistema de seguridad.
