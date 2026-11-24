@@ -158,3 +158,16 @@ Este hito aún necesita pruebas de detección en imágenes industriales reales a
 - No altera el visor de demostración anterior ni el piloto de cadena de frío: ambos siguen disponibles de forma independiente.
 
 **Estado de aceptación:** implementado y bajo pruebas automatizadas de dominio/sintaxis. Quedan pendientes pruebas reales de interacción y rendimiento WebGL en distintos navegadores y la integración del historial de incidencias del piloto con los proyectos importados. Se requiere revisar problemas geométricos antes de cualquier decisión operativa.
+
+## Contrato de datos v0.8 (compatibilidad Etapa 1 → Etapa 3)
+
+Se implementó `project-bundle.js`, un adaptador separado del motor geométrico, para no alterar `parseProject` ni los proyectos antiguos.
+
+- Importa archivos geométricos legacy `ingebam.factorytwins.project` v1, sin IDs de organización, y les asigna identidad **solo demostrativa** `org-demo-01` / `site-demo-01`.
+- Importa el JSON extendido que añade `organizationId`, `siteId`, `equipment[].telemetry`, `events` y `maintenanceLogs`; la telemetría sin fecha se conserva como `initialAssetState` y **nunca** se convierte en un registro histórico con una fecha inventada.
+- Exporta el sobre `ingebam.factorytwins.bundle` v1 con `layout`, `thresholds`, `initialAssetState`, `telemetryReadings`, `events` y `maintenanceLogs`. Cada registro histórico tiene `equipmentId`, `timestamp` ISO UTC y `source` `simulated` o `live`.
+- Valida IDs duplicados, equipos referenciados, valores numéricos finitos, fechas, categorías de evento y cantidades máximas. Las lecturas etiquetadas como `live` **no activan ningún monitor en vivo**: su etiqueta de procedencia se conserva solo en el archivo, sin conexión a dispositivos.
+- `operations.js` ya utiliza el adaptador en el flujo de importación/exportación. El modo operacional sigue siendo `SIMULATED`; solo un estado importado explícitamente como `simulated` puede inicializar una sesión ficticia.
+- No existe autenticación, autorización o aislamiento SaaS real: los IDs de organización y planta son metadatos, no controles de acceso. No permitir ingesta de sensores ni mezclar datos reales en un backend sin credenciales, filtrado por organización y políticas RLS.
+
+**Evolución:** la futura API traducirá el sobre a tablas relacionales con verificación de organización basada en identidad autenticada. La geometría se mantiene independiente de la telemetría y el motor de monitorización usa `equipment.id` como referencia.
