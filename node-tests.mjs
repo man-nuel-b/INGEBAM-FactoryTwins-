@@ -292,3 +292,11 @@ test('audit: Stage 1 shared monitor uses same identifiers in 2D and 3D source',a
  assert.match(src,/objectsById\.set\(e\.id,mesh\)/);
  assert.match(src,/select\(ids\.get\(picked\.object\)\)/);
 });
+
+test('audit: 3D equipment indicators use per-machine materials',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const src=readFileSync(new URL('./factory3d.js',import.meta.url),'utf8');
+ assert.match(src,/const indicatorMaterial=mat\(/);
+ assert.match(src,/const lamp=cylinder\(group,[^\n]*indicatorMaterial\)/);
+ assert.doesNotMatch(src,/const lamp=cylinder\(group,[^\n]*safety\)/);
+});
