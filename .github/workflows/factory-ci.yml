@@ -30,5 +30,7 @@ jobs:
           node --check monitor-domain.js
           node --check operations.js
           node --check project-bundle.js
+          node --check app.js
+          node --check legacy-demo-adapter.js
       - name: Regression tests
         run: npm test
