@@ -82,7 +82,8 @@ if (host) {
           block(group,.88,.13,.76,0,3.16,0,selectedColor);
         }
         // Hover/status column
-        const lamp=cylinder(group,.22,.22,.11,2.2,2.75,1.4,safety);
+        const indicatorMaterial=mat(0x4de5ba,.1,.45);
+        const lamp=cylinder(group,.22,.22,.11,2.2,2.75,1.4,indicatorMaterial);
         cylinder(group,.05,.05,1.1,2.2,2.15,1.4,steel);
         group.userData.indicator=lamp;
         group.traverse(o=>{if(o.isMesh){o.userData.machineId=m.id;picks.push(o)}});
