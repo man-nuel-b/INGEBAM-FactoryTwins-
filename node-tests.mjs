@@ -102,3 +102,33 @@ test('pilot summary calculates energy as kWh rather than kW',async()=>{
  const p=stepPilot(createPilot()),s=summarize(p);
  assert.ok(s.kwh>0&&s.kwh<s.kw);
 });
+
+test('unified monitor maps every layout equipment to an asset with the same ID',async()=>{
+ const {buildMonitor,demoLayout}=await import('./monitor-domain.js');
+ const layout=demoLayout(),monitor=buildMonitor(layout);
+ assert.deepEqual(monitor.assets.map(a=>a.id),layout.equipment.map(e=>e.id));
+ assert.equal(monitor.mode,'SIMULATED');
+});
+test('unified monitor handles an empty valid layout',async()=>{
+ const {buildMonitor,monitorSummary}=await import('./monitor-domain.js');
+ const m=buildMonitor(base());
+ assert.equal(m.selected,null);assert.equal(m.assets.length,0);
+ assert.equal(monitorSummary(m).power,0);
+});
+test('monitor selection and maintenance use persistent equipment IDs',async()=>{
+ const {buildMonitor,demoLayout,chooseAsset,maintainAsset}=await import('./monitor-domain.js');
+ let m=buildMonitor(demoLayout());m=chooseAsset(m,'M04');assert.equal(m.selected,'M04');
+ m=maintainAsset(m,'M04');assert.equal(m.events[0].assetId,'M04');
+ assert.throws(()=>chooseAsset(m,'DOES-NOT-EXIST'));
+});
+test('monitor simulation is purely simulated and reproducible with injected noise',async()=>{
+ const {buildMonitor,demoLayout,simulateNext}=await import('./monitor-domain.js');
+ const a=buildMonitor(demoLayout()),b=simulateNext(a,()=>.75),c=simulateNext(a,()=>.75);
+ assert.deepEqual(b,c);assert.equal(a.tick,0);assert.equal(b.tick,1);
+ assert.deepEqual(b.layout,a.layout);
+});
+test('monitor rejects unexpected layout equipment',async()=>{
+ const {buildMonitor}=await import('./monitor-domain.js');
+ const p=base();p.equipment=[{...equip('M01',0,0),kind:'unrecognized'}];
+ assert.throws(()=>buildMonitor(p));
+});
