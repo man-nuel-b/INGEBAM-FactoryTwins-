@@ -38,3 +38,32 @@ test('AI detector requires a valid image before downloading models',async()=>{
  const {detectGenericObjects}=await import('./photo-ai.js');
  await assert.rejects(detectGenericObjects({naturalWidth:0,naturalHeight:0}),/Carga una imagen válida/);
 });
+
+test('plain strips angle brackets according to its documented rule',()=>{
+  assert.equal(parseProject({...base(),name:'<b>Demo</b>'}).name,'bDemo/b');
+});
+test('homography maps unit-square centre to world centre',()=>{
+  const src=[[0,0],[1,0],[1,1],[0,1]];
+  const h=solveHomography(src,floorCorners(30,20));
+  const [x,y]=transformPoint(h,.5,.5);
+  assert.ok(Math.abs(x)<1e-9&&Math.abs(y)<1e-9);
+});
+test('homography rejects four collinear points',()=>{
+  const points=[[0,0],[.25,.25],[.5,.5],[.75,.75]];
+  assert.throws(()=>solveHomography(points,floorCorners(20,20)));
+  assert.throws(()=>validateCorners(points));
+});
+test('homography rejects zero denominator at projective horizon',()=>{
+  const h=[1,0,0,0,1,0,1,0,1];
+  assert.throws(()=>transformPoint(h,-1,0));
+});
+test('homography rejects NaN calibration input',()=>{
+  const corners=[[0,0],[1,0],[1,1],[0,NaN]];
+  assert.throws(()=>solveHomography(corners,floorCorners(20,20)));
+});
+test('calibration rejects intersecting quadrilateral',()=>{
+  assert.throws(()=>validateCorners([[0,0],[1,1],[1,0],[0,1]]));
+});
+test('calibration rejects very small area',()=>{
+  assert.throws(()=>validateCorners([[0,0],[.01,0],[.01,.01],[0,.01]]));
+});
