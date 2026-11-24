@@ -103,7 +103,7 @@ function setPhoto(file){
  if(photoURL)URL.revokeObjectURL(photoURL);
  photoURL=URL.createObjectURL(file);
  corners=[];machines=[];suggestions=[];aiDetections=[];photoRevision++;homography=null;mode='corners';nextNumber=1;
- const img=$('photoImage');img.onload=()=>{img.hidden=false;$('placeholder').hidden=true;render();feedback('Imagen preparada. Marca la esquina superior izquierda del piso.');};
+ const img=$('photoImage');img.onload=()=>{img.hidden=false;$('placeholder').hidden=true;$('suggestRegions').disabled=false;$('detectAI').disabled=aiBusy;render();feedback('Imagen preparada. Marca la esquina superior izquierda del piso.');};
  img.onerror=()=>{feedback('La imagen no pudo cargarse.');};
  img.src=photoURL;
 }
