@@ -71,3 +71,22 @@ No hay pruebas de regresión de interfaz verificadas en navegadores reales, prue
 - Pruebas de regresión de geometría ampliadas a 17 casos en `tests.html`.
 
 **Importante:** las validaciones modelan huellas rectangulares 2D y no representan los requisitos de distancias de seguridad o normativa de una instalación real. La interacción está implementada en código pero falta probar exhaustivamente en navegadores y dispositivos reales.
+
+## Photo Mapper V0.4 — reconstrucción asistida desde fotografía
+
+Abrir [Photo Mapper](https://man-nuel-b.github.io/INGEBAM-FactoryTwins-/photo-mapper.html).
+
+El usuario puede:
+1. Cargar imagen local JPG, PNG o WebP de hasta 10 MB.
+2. Introducir ancho y largo estimados de la instalación.
+3. Seleccionar cuatro esquinas correspondientes al rectángulo de piso, en orden: superior izquierda, superior derecha, inferior derecha e inferior izquierda.
+4. El motor `photo-geometry.js` calcula una homografía proyectiva del plano de imagen al plano de suelo. **No estima de forma autónoma las medidas reales ni la profundidad de objetos**.
+5. Marcar centros de máquinas visibles, clasificarlas y darles dimensiones estimadas.
+6. Exportar el proyecto JSON o abrirlo directamente en `studio.html` mediante transferencia temporal de datos en la misma pestaña.
+7. Corregir en Studio la geometría estimada, colisiones y posiciones no válidas.
+
+La imagen **no** se carga a servidores, no se exporta ni permanece en almacenamiento persistente. Solo viajan posiciones y metadatos geométricos al Studio. No hay procesamiento remoto ni IA implementada.
+
+**Limitación principal:** Una fotografía perspectiva única puede presentar oclusión, distorsión o no mostrar cuatro esquinas reales del piso. Una homografía solo describe un plano. Alturas de máquinas, superficies fuera del plano y partes ocultas requieren medición y corrección manual. No vender como fotogrametría, CAD as-built o medición profesional.
+
+Pruebas de calibración previstas en [photo-tests.html](https://man-nuel-b.github.io/INGEBAM-FactoryTwins-/photo-tests.html). La existencia del código de pruebas no implica que se hayan ejecutado con éxito en todos los navegadores.
