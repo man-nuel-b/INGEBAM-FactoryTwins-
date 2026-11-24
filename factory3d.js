@@ -95,7 +95,7 @@ if (host) {
         const hit=raycaster.intersectObjects(picks,false)[0];
         if(hit&&window.FactoryTwinsSelect)window.FactoryTwinsSelect(hit.object.userData.machineId);
       });
-      let selected='M04',isVisible=true;
+      let selected='M04';
       function sync(){
         const d=window.FactoryTwinsData?.();if(!d)return;
         selected=d.selected;
@@ -110,14 +110,50 @@ if (host) {
       const halos=new THREE.MeshBasicMaterial({color:0x35edda,transparent:true,opacity:.7,side:THREE.DoubleSide});
       const init=window.FactoryTwinsData?.();if(init){for(const m of init.items){addMachine(m);const group=groups.get(m.id);const halo=new THREE.Mesh(new THREE.RingGeometry(2.7,2.86,64),halos);halo.rotation.x=-Math.PI/2;halo.position.y=.23;group.add(halo);group.userData.halo=halo;}}
       window.addEventListener('factorytwins:update',sync);sync();
-      const observer=new ResizeObserver(()=>{const w=host.clientWidth,h=host.clientHeight;if(w<1||h<1)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)});observer.observe(host);
-      let previous=0;
-      function frame(t){requestAnimationFrame(frame);if(document.hidden||host.offsetParent===null)return;const dt=Math.min((t-previous)/16.67||1,3);previous=t;
-        if(!window.FactoryTwinsData?.().paused){for(const r of rotors)r.o.rotation.y+=r.speed*dt}
+      const resize=()=>{
+        const w=host.clientWidth,h=host.clientHeight;
+        if(w<1||h<1)return;
+        camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);
+      };
+      const observer=new ResizeObserver(resize);observer.observe(host);
+      let previous=0,animationId=0,disposed=false;
+      function frame(t){
+        if(disposed)return;
+        animationId=requestAnimationFrame(frame);
+        // Explicitly inspect the host: hidden parent and 2D mode are both supported.
+        if(document.hidden||host.hidden||!host.isConnected||host.getClientRects().length===0){
+          previous=0;return;
+        }
+        const dt=previous?Math.min((t-previous)/16.67,3):1;previous=t;
+        if(!window.FactoryTwinsData?.()?.paused){
+          for(const rotor of rotors)rotor.o.rotation.y+=rotor.speed*dt;
+        }
         controls.update();renderer.render(scene,camera);
-      }requestAnimationFrame(frame);
-      document.getElementById('viewReset')?.addEventListener('click',()=>{camera.position.set(18,19,23);controls.target.set(0,1,0);controls.update()});
-      document.getElementById('viewTop')?.addEventListener('click',()=>{camera.position.set(0,32,.01);controls.target.set(0,0,0);controls.update()});
+      }
+      animationId=requestAnimationFrame(frame);
+      const resetView=()=>{camera.position.set(18,19,23);controls.target.set(0,1,0);controls.update()};
+      const topView=()=>{camera.position.set(0,32,.01);controls.target.set(0,0,0);controls.update()};
+      document.getElementById('viewReset')?.addEventListener('click',resetView);
+      document.getElementById('viewTop')?.addEventListener('click',topView);
+      const cleanup=()=>{
+        if(disposed)return;
+        disposed=true;cancelAnimationFrame(animationId);observer.disconnect();
+        window.removeEventListener('factorytwins:update',sync);
+        document.getElementById('viewReset')?.removeEventListener('click',resetView);
+        document.getElementById('viewTop')?.removeEventListener('click',topView);
+        controls.dispose();
+        const geometries=new Set(),materials=new Set();
+        scene.traverse(object=>{
+          if(object.geometry)geometries.add(object.geometry);
+          if(object.material){
+            for(const material of (Array.isArray(object.material)?object.material:[object.material]))materials.add(material);
+          }
+        });
+        for(const geometry of geometries)geometry.dispose();
+        for(const material of materials)material.dispose();
+        renderer.dispose();
+      };
+      window.addEventListener('pagehide',cleanup,{once:true});
       const hint=document.getElementById('3dloading');if(hint)hint.remove();
     }catch(err){
       console.error('Factory Twins 3D:',err);
