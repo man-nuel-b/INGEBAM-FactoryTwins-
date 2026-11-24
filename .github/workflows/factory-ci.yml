@@ -27,5 +27,7 @@ jobs:
           node --check geometry.js
           node --check pilot-engine.js
           node --check pilot.js
+          node --check monitor-domain.js
+          node --check operations.js
       - name: Regression tests
         run: npm test
