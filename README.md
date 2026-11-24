@@ -171,3 +171,15 @@ Se implementó `project-bundle.js`, un adaptador separado del motor geométrico,
 - No existe autenticación, autorización o aislamiento SaaS real: los IDs de organización y planta son metadatos, no controles de acceso. No permitir ingesta de sensores ni mezclar datos reales en un backend sin credenciales, filtrado por organización y políticas RLS.
 
 **Evolución:** la futura API traducirá el sobre a tablas relacionales con verificación de organización basada en identidad autenticada. La geometría se mantiene independiente de la telemetría y el motor de monitorización usa `equipment.id` como referencia.
+
+## Integración del monitor original con datos unificados (noviembre 2026)
+
+La pantalla `index.html` mantiene su demostración 2D/3D y el contrato `window.FactoryTwinsData`. Su `app.js` ahora registra:
+- Lecturas simuladas con fecha UTC, `equipmentId` estable y `source: 'simulated'`, con límite de 12.000 registros en memoria.
+- Eventos estructurados (ID, fecha, tipo, severidad, mensaje y `equipmentId` cuando corresponda). Se muestran hasta 12, se conservan hasta 200 por sesión.
+- Mantenimientos simulados estructurados con factor de vibración y cambio de salud.
+- Umbrales configurables por equipo con valores de respaldo.
+
+El nuevo `legacy-demo-adapter.js` exporta esos datos como `ingebam.factorytwins.bundle` v1, compatible con `operations.js`. La geometría procede del layout en **metros** de `monitor-domain.js`; los campos `x,y,w,h` de `app.js` pertenecen únicamente al esquema gráfico 2D y no deben confundirse con metros.
+
+`geometry.js` y su `parseProject` original permanecen intactos; la extensión de proyecto se valida en `project-bundle.js`. No existe control industrial ni telemetría real.
