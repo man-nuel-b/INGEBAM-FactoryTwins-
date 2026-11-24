@@ -27,3 +27,14 @@ test('region proposals stay within image bounds',()=>{
  for(let y=0;y<height;y++)for(let x=0;x<width;x++){const i=(y*width+x)*4;const c=x>25&&x<100&&y>24&&y<100?240:12;data[i]=data[i+1]=data[i+2]=c;data[i+3]=255;}
  const r=suggestRegions({width,height,data});r.forEach(b=>{assert.ok(b.x>=0&&b.y>=0&&b.x+b.w<=1.00001&&b.y+b.h<=1.00001)});
 });
+
+test('AI COCO label mapping remains conservative',async()=>{
+ const {isPotentiallyRelevant}=await import('./photo-ai.js');
+ assert.equal(isPotentiallyRelevant('refrigerator'),true);
+ assert.equal(isPotentiallyRelevant('industrial centrifuge'),false);
+ assert.equal(isPotentiallyRelevant('__proto__'),false);
+});
+test('AI detector requires a valid image before downloading models',async()=>{
+ const {detectGenericObjects}=await import('./photo-ai.js');
+ await assert.rejects(detectGenericObjects({naturalWidth:0,naturalHeight:0}),/Carga una imagen válida/);
+});
