@@ -29,5 +29,6 @@ jobs:
           node --check pilot.js
           node --check monitor-domain.js
           node --check operations.js
+          node --check project-bundle.js
       - name: Regression tests
         run: npm test
