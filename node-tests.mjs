@@ -209,3 +209,34 @@ test('legacy dashboard adapter rejects unknown machine and nonfinite data',async
  assert.throws(()=>legacySimulationBundle({items:items.map((x,i)=>i===0?{...x,id:'X01'}:x)}));
  assert.throws(()=>legacySimulationBundle({items:items.map((x,i)=>i===0?{...x,power:Infinity}:x)}));
 });
+
+test('photo placement produces valid (x,z) from homography and preserves units',async()=>{
+ const {proposeEquipment}=await import('./photo-layout.js');
+ const layout=base(),h=solveHomography([[0,0],[1,0],[1,1],[0,1]],floorCorners(27,19));
+ const result=proposeEquipment({project:layout,homography:h,imageX:.5,imageY:.5,id:'PHOTO_01',kind:'coldroom',label:'Cámara',dimensions:{w:3,d:2,h:2,rotation:0}});
+ assert.equal(result.equipment.x,0);assert.equal(result.equipment.z,0);
+ assert.equal(validateLayout(result.project).errors.length,0);
+ assert.equal(layout.equipment.length,0);
+});
+test('photo placement refuses overlap and perimetral intrusion',async()=>{
+ const {proposeEquipment}=await import('./photo-layout.js');
+ const p=base(),h=solveHomography([[0,0],[1,0],[1,1],[0,1]],floorCorners(27,19));
+ const d={w:3,d:2,h:2,rotation:0};
+ const a=proposeEquipment({project:p,homography:h,imageX:.5,imageY:.5,id:'PHOTO_01',kind:'coldroom',label:'A',dimensions:d});
+ assert.throws(()=>proposeEquipment({project:a.project,homography:h,imageX:.5,imageY:.5,id:'PHOTO_02',kind:'coldroom',label:'B',dimensions:d}),/colisión/);
+ assert.throws(()=>proposeEquipment({project:p,homography:h,imageX:.99,imageY:.5,id:'PHOTO_03',kind:'coldroom',label:'C',dimensions:d}),/perimetral/);
+});
+test('photo placement rejects invalid or off-image coordinates',async()=>{
+ const {proposeEquipment}=await import('./photo-layout.js');
+ const p=base(),h=solveHomography([[0,0],[1,0],[1,1],[0,1]],floorCorners(27,19));
+ const d={w:2,d:2,h:2,rotation:0};
+ assert.throws(()=>proposeEquipment({project:p,homography:h,imageX:NaN,imageY:.5,id:'Q01',kind:'rack',label:'Rack',dimensions:d}));
+ assert.throws(()=>proposeEquipment({project:p,homography:h,imageX:1.1,imageY:.5,id:'Q01',kind:'rack',label:'Rack',dimensions:d}));
+});
+test('region suggestions use normalized image coordinates',()=>{
+ const width=128,height=128,data=new Uint8ClampedArray(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){const i=4*(y*width+x);const v=(x>30&&x<100&&y>32&&y<100)?220:20;data[i]=data[i+1]=data[i+2]=v;data[i+3]=255}
+ const r=suggestRegions({width,height,data});
+ assert.ok(r.length<=8);
+ for(const b of r){assert.ok(b.x>=0&&b.y>=0&&b.w>0&&b.h>0&&b.x+b.w<=1.0001&&b.y+b.h<=1.0001)}
+});
