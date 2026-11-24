@@ -1,9 +1,10 @@
 import {parseProject,validateLayout,EQUIPMENT_TYPES} from './geometry.js';
 import {solveHomography,transformPoint,floorCorners,validateCorners} from './photo-geometry.js';
 import {suggestRegions} from './photo-regions.js';
+import {detectGenericObjects,isPotentiallyRelevant} from './photo-ai.js';
 const $=id=>document.getElementById(id);
 const KEY='ingebam.factorytwins.photomapper.transfer.v1';
-let photoURL=null, corners=[],machines=[],homography=null, mode='corners',nextNumber=1, suggestions=[];
+let photoURL=null, corners=[],machines=[],homography=null, mode='corners',nextNumber=1, suggestions=[],aiDetections=[],aiBusy=false,photoRevision=0;
 const svg=$('overlay'),ns='http://www.w3.org/2000/svg';
 function feedback(t){$('feedback').textContent=t;}
 function numeric(id,min,max){const n=Number($(id).value);if(!Number.isFinite(n)||n<min||n>max)throw Error('Valor fuera de rango: '+id);return n;}
@@ -69,6 +70,11 @@ function render(){
   drawSvg('rect',{x,y,width:box.w*rect.width,height:box.h*rect.height,fill:'#ffcf74','fill-opacity':'.05',stroke:'#ffcf74','stroke-width':2,'stroke-dasharray':'6 5',rx:4});
   const label=drawSvg('text',{x:x+5,y:y+16,fill:'#ffeab6','font-size':12,'font-weight':800,stroke:'#152636','stroke-width':3,'paint-order':'stroke'});label.textContent='S'+(i+1);
  }
+ for(let i=0;i<aiDetections.length;i++){
+  const box=aiDetections[i], [x,y]=pos([box.x,box.y]);
+  drawSvg('rect',{x,y,width:box.w*rect.width,height:box.h*rect.height,fill:'#68acff','fill-opacity':'.04',stroke:'#7ac1ff','stroke-width':2,'stroke-dasharray':'5 4',rx:4});
+  const t=drawSvg('text',{x:x+5,y:y+15,fill:'#c2e6ff','font-size':12,'font-weight':700,stroke:'#112334','stroke-width':3,'paint-order':'stroke'});t.textContent=box.label+' '+Math.round(box.confidence*100)+'%';
+ }
  for(let i=0;i<machines.length;i++){
   const m=machines[i],[cx,cy]=pos([m.imageX,m.imageY]);
   drawSvg('circle',{cx,cy,r:12,fill:'#40e4bd',stroke:'#0f2933','stroke-width':3});
@@ -76,7 +82,7 @@ function render(){
  }
  for(let i=0;i<4;i++)$('corner'+i).className=i<corners.length?'done':i===corners.length?'next':'';
  $('stepText').textContent=!photoURL?'1 · Cargar imagen':corners.length<4?'2 · Marcar esquina '+(corners.length+1)+'/4':'3 · Identificar máquinas';
- $('markMode').disabled=corners.length!==4;refreshSuggestions();
+ $('markMode').disabled=corners.length!==4;refreshSuggestions();refreshAI();
  $('count').textContent=machines.length;
  let issues=[];
  try{issues=validateLayout(buildProject()).errors}catch(err){issues=[err.message]}
@@ -94,11 +100,50 @@ function setPhoto(file){
  if(!file||!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024)throw Error('Utiliza JPG, PNG o WebP de hasta 10 MB.');
  if(photoURL)URL.revokeObjectURL(photoURL);
  photoURL=URL.createObjectURL(file);
- corners=[];machines=[];suggestions=[];homography=null;mode='corners';nextNumber=1;
+ corners=[];machines=[];suggestions=[];aiDetections=[];photoRevision++;homography=null;mode='corners';nextNumber=1;
  const img=$('photoImage');img.onload=()=>{img.hidden=false;$('placeholder').hidden=true;render();feedback('Imagen preparada. Marca la esquina superior izquierda del piso.');};
  img.onerror=()=>{feedback('La imagen no pudo cargarse.');};
  img.src=photoURL;
 }
+function refreshAI(){
+ const container=$('aiList');container.replaceChildren();
+ if(!aiDetections.length){const p=document.createElement('p');p.className='hint';p.textContent='Sin detecciones confirmadas ni propuestas pendientes.';container.append(p);return;}
+ aiDetections.forEach((d,i)=>{
+  const row=document.createElement('div');row.className='suggestion';
+  const label=document.createElement('span');
+  label.textContent=d.label+' ('+Math.round(d.confidence*100)+' % · COCO)'+(isPotentiallyRelevant(d.label)?' · revisar posible equipo':' · clase genérica');
+  const add=document.createElement('button');add.type='button';add.textContent='Ubicar en plano';add.disabled=!homography;
+  add.title='Ubica el punto inferior central de la detección, aproximación del contacto con el piso';
+  add.onclick=()=>{
+   try{
+    const floorX=d.x+d.w*.5, floorY=Math.min(.999,d.y+d.h);
+    addAtPoint(floorX,floorY);
+    aiDetections.splice(i,1);render();
+    feedback('Detección aceptada como posición aproximada. Confirma manualmente el tipo de máquina y dimensiones.');
+   }catch(e){feedback(e.message)}
+  };
+  const discard=document.createElement('button');discard.type='button';discard.textContent='Descartar';discard.onclick=()=>{aiDetections.splice(i,1);render()};
+  row.append(label,add,discard);container.append(row);
+ });
+}
+$('detectAI').onclick=async()=>{
+ if(aiBusy)return;
+ const img=$('photoImage');
+ if(img.hidden||!img.naturalWidth){$('aiStatus').textContent='Carga una fotografía antes de analizar.';return;}
+ const revision=photoRevision;aiBusy=true;$('detectAI').disabled=true;
+ $('aiStatus').textContent='Descargando modelo e identificando objetos comunes. No es un detector industrial.';
+ try{
+  const detected=await detectGenericObjects(img,{threshold:.55,maxBoxes:12});
+  if(revision!==photoRevision)return;
+  aiDetections=detected;
+  $('aiStatus').textContent=detected.length
+   ?detected.length+' detecciones genéricas encontradas. Revisa etiquetas y confirma manualmente cada una.'
+   :'El modelo no reconoció objetos de sus clases compatibles. Usa marcas manuales o regiones de contraste.';
+  render();
+ }catch(e){if(revision===photoRevision)$('aiStatus').textContent='Detector IA no disponible: '+e.message+'. Puedes continuar con el método manual.'}
+ finally{aiBusy=false;$('detectAI').disabled=!photoURL}
+};
+$('clearAI').onclick=()=>{aiDetections=[];render();$('aiStatus').textContent='Detecciones descartadas.'};
 function refreshSuggestions(){
  const root=$('suggestedList');root.replaceChildren();
  if(!suggestions.length){const p=document.createElement('p');p.className='hint';p.textContent='Sin regiones sugeridas.';root.append(p);return;}
@@ -136,7 +181,7 @@ $('undoPoint').onclick=()=>{
  else feedback('No hay puntos que deshacer.');
  render();
 };
-$('resetCorners').onclick=()=>{corners=[];homography=null;mode='corners';machines=[];suggestions=[];$('markMode').disabled=true;feedback('Calibración reiniciada.');render();};
+$('resetCorners').onclick=()=>{corners=[];homography=null;mode='corners';machines=[];suggestions=[];aiDetections=[];$('markMode').disabled=true;feedback('Calibración reiniciada.');render();};
 $('markMode').onclick=()=>{if(corners.length===4){mode='machines';feedback('Haz clic sobre los centros de los equipos.')}};
 $('clearItems').onclick=()=>{if(machines.length&&confirm('¿Eliminar los equipos identificados?')){machines=[];render();}};
 for(const id of ['width','depth'])$(id).addEventListener('change',()=>{if(corners.length===4){try{recalibrate();feedback('Escala actualizada: verifica posiciones de los equipos.');for(const m of machines){[m.x,m.z]=transformPoint(homography,m.imageX,m.imageY).map(n=>Number(n.toFixed(3)));}}catch(e){feedback(e.message)}}render()});
