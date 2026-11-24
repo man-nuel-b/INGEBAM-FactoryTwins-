@@ -12,7 +12,7 @@ export function legacySimulationBundle({items,events=[],maintenanceLogs=[],readi
  const initialAssetState={};const thresholds={};
  for(const e of layout.equipment){
   const m=byId.get(e.id);
-  if(m.kind!==machineToKind[m.id])throw Error('Tipo de equipo no coincide');
+  if(m.kind!==undefined&&m.kind!==machineToKind[m.id])throw Error('Tipo de equipo no coincide');
   for(const key of ['temp','vib','power','health'])if(!finite(m[key],key==='temp'?-100:0,key==='power'?100000:key==='temp'?200:100))throw Error('Lectura inválida: '+key);
   if(typeof m.running!=='boolean')throw Error('Estado de marcha inválido');
   initialAssetState[e.id]={equipmentId:e.id,source:'simulated',temp:m.temp,vib:m.vib,power:m.power,health:m.health,running:m.running};
