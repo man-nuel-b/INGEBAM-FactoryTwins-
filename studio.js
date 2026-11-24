@@ -23,7 +23,7 @@ scene.add(new THREE.HemisphereLight(0xc2e2ff,0x2b4250,2.25));
 const sun=new THREE.DirectionalLight(0xffffff,3);sun.position.set(-15,25,18);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-70;sun.shadow.camera.right=70;sun.shadow.camera.top=70;sun.shadow.camera.bottom=-70;scene.add(sun);
 const material=(c,metal=.3,rough=.5)=>new THREE.MeshStandardMaterial({color:c,metalness:metal,roughness:rough});
 const concrete=material(0x45596b,.12,.85),steel=material(0x99afba,.65,.38),dark=material(0x2a4252,.55,.49),glass=material(0x6ba6b3,.24,.2),yellow=material(0xf3c46e,.25,.56),red=material(0xcc655a,.25,.6),selectedMat=material(0x2ae1c4,.45,.33);
-let siteRoot=null,machineRoot=null,pickables=[];
+let siteRoot=null,machineRoot=null,pickables=[];const machineGroups=new Map();
 function block(parent,w,h,d,x,y,z,mat){const obj=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);obj.position.set(x,y,z);obj.castShadow=true;obj.receiveShadow=true;parent.add(obj);return obj;}
 function cyl(parent,rt,rb,h,x,y,z,mat){const o=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,20),mat);o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o}
 function disposeGroup(g){g.traverse(o=>{if(o.isMesh)o.geometry.dispose()});if(g.parent)g.parent.remove(g)}
@@ -36,10 +36,10 @@ function drawSite(){if(siteRoot)disposeGroup(siteRoot);siteRoot=new THREE.Group(
  for(const z of [-d/2+.4,d/2-.4])block(siteRoot,w,.14,.14,0,4.42,z,steel);
  for(const x of [-1.3,1.3])block(siteRoot,.07,.024,d,x,-.025,0,line);
 }
-function drawMachines(){if(machineRoot)disposeGroup(machineRoot);machineRoot=new THREE.Group();scene.add(machineRoot);pickables=[];
+function drawMachines(){if(machineRoot)disposeGroup(machineRoot);machineRoot=new THREE.Group();scene.add(machineRoot);pickables=[];machineGroups.clear();
  const invalid=validate(project).perId;
  for(const m of project.equipment){
-  const g=new THREE.Group();g.position.set(m.x,0,m.z);g.rotation.y=-m.rotation*Math.PI/180;g.userData.id=m.id;machineRoot.add(g);
+  const g=new THREE.Group();g.position.set(m.x,0,m.z);g.rotation.y=-m.rotation*Math.PI/180;g.userData.id=m.id;machineRoot.add(g);machineGroups.set(m.id,g);
   const body=invalid[m.id]?red:m.id===selected?selectedMat:steel;
   const baseY=.12,hh=m.h*.55;
   block(g,m.w,.15,m.d,0,.08,0,dark);
@@ -97,9 +97,75 @@ $('clearPhoto').addEventListener('click',()=>{
 });
 window.addEventListener('pagehide',()=>{if(photoUrl)URL.revokeObjectURL(photoUrl)});
 
-const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let down=null;
-renderer.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY}});
-renderer.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down.x,e.clientY-down.y)>6){down=null;return}down=null;const b=renderer.domElement.getBoundingClientRect();pointer.set(2*(e.clientX-b.left)/b.width-1,1-2*(e.clientY-b.top)/b.height);ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(pickables)[0];if(hit)select(hit.object.userData.machineId)});
+// Direct manipulation: dragging machinery on a horizontal ground plane.
+// Commit is atomic, and illegal moves are discarded.
+const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
+const ground=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+const worldPoint=new THREE.Vector3();
+let drag=null;
+function pointerRay(e){
+ const b=renderer.domElement.getBoundingClientRect();
+ if(!b.width||!b.height)return false;
+ pointer.set(2*(e.clientX-b.left)/b.width-1,1-2*(e.clientY-b.top)/b.height);
+ ray.setFromCamera(pointer,camera);return true;
+}
+function pick(e){
+ if(!pointerRay(e))return null;
+ return ray.intersectObjects(pickables,false)[0]?.object?.userData?.machineId||null;
+}
+renderer.domElement.addEventListener('pointerdown',e=>{
+ if(e.button!==0)return;
+ const id=pick(e);
+ if(!id)return;
+ if(id!==selected)select(id);
+ const g=machineGroups.get(id);
+ if(!g||!pointerRay(e)||!ray.ray.intersectPlane(ground,worldPoint))return;
+ drag={id,startX:e.clientX,startY:e.clientY,initialX:g.position.x,initialZ:g.position.z,offsetX:g.position.x-worldPoint.x,offsetZ:g.position.z-worldPoint.z,moved:false};
+ controls.enabled=false;
+ renderer.domElement.setPointerCapture(e.pointerId);
+});
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(!drag||!machineGroups.has(drag.id))return;
+ if(!drag.moved&&Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)<5)return;
+ drag.moved=true;
+ if(!pointerRay(e)||!ray.ray.intersectPlane(ground,worldPoint))return;
+ const g=machineGroups.get(drag.id),step=$('snap').checked?.25:0;
+ const x=worldPoint.x+drag.offsetX,z=worldPoint.z+drag.offsetZ;
+ g.position.x=step?Math.round(x/step)*step:x;
+ g.position.z=step?Math.round(z/step)*step:z;
+ status('Moviendo equipo · suelta para validar');
+});
+function finishDrag(e,cancel=false){
+ if(!drag)return;
+ const d=drag;drag=null;controls.enabled=true;
+ const g=machineGroups.get(d.id);
+ if(!g)return;
+ if(cancel||!d.moved){g.position.set(d.initialX,0,d.initialZ);return}
+ const x=Number(g.position.x.toFixed(3)),z=Number(g.position.z.toFixed(3));
+ g.position.set(d.initialX,0,d.initialZ);
+ if(x===d.initialX&&z===d.initialZ)return;
+ const candidate=clone(project),eq=candidate.equipment.find(m=>m.id===d.id);
+ if(!eq)return;
+ eq.x=x;eq.z=z;
+ if(validate(candidate).perId[d.id]){status('Movimiento rechazado: colisión o fuera de la nave');drawMachines();return}
+ try{
+  mutation(()=>{const target=project.equipment.find(m=>m.id===d.id);target.x=x;target.z=z;});
+  status('Equipo movido a X '+x.toFixed(2)+' m, Z '+z.toFixed(2)+' m');
+ }catch(err){status('Movimiento rechazado: '+err.message)}
+}
+renderer.domElement.addEventListener('pointerup',e=>finishDrag(e));
+renderer.domElement.addEventListener('pointercancel',e=>finishDrag(e,true));
+renderer.domElement.addEventListener('lostpointercapture',()=>finishDrag(null,true));
+function rotateSelected(delta){
+ const e=project.equipment.find(e=>e.id===selected);if(!e)return;
+ const next=((e.rotation+delta)%360+360)%360;
+ const candidate=clone(project),item=candidate.equipment.find(x=>x.id===selected);item.rotation=next;
+ if(validate(candidate).perId[selected]){status('Giro rechazado por colisión o límite de planta');return}
+ mutation(()=>{const target=project.equipment.find(x=>x.id===selected);target.rotation=next});
+ status('Equipo girado a '+next+'°');
+}
+$('rotateLeft').onclick=()=>rotateSelected(-15);
+$('rotateRight').onclick=()=>rotateSelected(15);
 const ro=new ResizeObserver(()=>{const w=container.clientWidth,h=container.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)});ro.observe(container);
 let last=0;function frame(t){requestAnimationFrame(frame);if(document.hidden)return;last=t;controls.update();renderer.render(scene,camera)}requestAnimationFrame(frame);
 try{const saved=localStorage.getItem(STORAGE);if(saved)project=parseProject(JSON.parse(saved))}catch(e){status('No se pudo restaurar proyecto local: '+e.message)}
