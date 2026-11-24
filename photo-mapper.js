@@ -59,7 +59,7 @@ function render(){
  const rect=imageRect();svg.setAttribute('viewBox','0 0 '+rect.shellW+' '+rect.shellH);svg.replaceChildren();
  const pos=p=>[rect.left+p[0]*rect.width,rect.top+p[1]*rect.height];
  if(corners.length>1){const path=corners.map(pos).map(p=>p.join(',')).join(' ');drawSvg('polyline',{points:path,fill:'none',stroke:'#ffd078','stroke-width':3,'stroke-dasharray':'8 5'});}
- if(corners.length===4){drawSvg('polygon',{points:corners.map(pos).map(p=>p.join(',')).join(' ',fill:'#30d6a1','fill-opacity':'.08',stroke:'#ffcb75','stroke-width':2});}
+ if(corners.length===4){drawSvg('polygon',{points:corners.map(pos).map(p=>p.join(',')).join(' '),fill:'#30d6a1','fill-opacity':'.08',stroke:'#ffcb75','stroke-width':2});}
  for(let i=0;i<corners.length;i++){
   const [cx,cy]=pos(corners[i]);drawSvg('circle',{cx,cy,r:11,fill:'#f6c875',stroke:'#1e2635','stroke-width':2});
   const t=drawSvg('text',{x:cx,y:cy+4,'text-anchor':'middle',fill:'#182630','font-size':12,'font-weight':800});t.textContent=String(i+1);
