@@ -25,5 +25,7 @@ jobs:
           node --check photo-ai.js
           node --check factory3d.js
           node --check geometry.js
+          node --check pilot-engine.js
+          node --check pilot.js
       - name: Regression tests
         run: npm test
