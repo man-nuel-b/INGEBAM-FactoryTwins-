@@ -132,3 +132,48 @@ test('monitor rejects unexpected layout equipment',async()=>{
  const p=base();p.equipment=[{...equip('M01',0,0),kind:'unrecognized'}];
  assert.throws(()=>buildMonitor(p));
 });
+
+test('legacy geometry v1 imports without modification and receives demo identity',async()=>{
+ const {importProjectBundle}=await import('./project-bundle.js');
+ const old=base();old.equipment=[equip('M04',0,0)];
+ const b=importProjectBundle(old);
+ assert.equal(b.schema,'ingebam.factorytwins.bundle');
+ assert.equal(b.organizationId,'org-demo-01');assert.equal(b.layout.equipment[0].id,'M04');
+ assert.deepEqual(b.telemetryReadings,[]);
+});
+test('enriched project retains tenant IDs, thresholds and undated initial state',async()=>{
+ const {importProjectBundle}=await import('./project-bundle.js');
+ const p=base();p.organizationId='org-demo-01';p.siteId='site-temuco-01';p.site.unit='m';
+ p.equipment=[{...equip('M04',0,0),kind:'coldroom',telemetry:{mode:'simulated',temp:6.7,vib:2.9,power:14.8,health:76,running:true,thresholds:{tempMax:6,vibMax:5,healthMin:70}}}];
+ p.events=[{id:'evt-001',timestamp:'2026-11-24T04:17:00.000Z',equipmentId:'M04',type:'status_change',severity:'warn',message:'Alerta ficticia'}];
+ p.maintenanceLogs=[{id:'mnt-001',timestamp:'2026-11-24T04:18:00.000Z',equipmentId:'M04',summary:'Revisión simulada'}];
+ const b=importProjectBundle(p);
+ assert.equal(b.initialAssetState.M04.temp,6.7);
+ assert.equal(b.initialAssetState.M04.timestamp,undefined);
+ assert.equal(b.events[0].equipmentId,'M04');
+ assert.equal(b.maintenanceLogs[0].id,'mnt-001');
+ assert.equal(b.thresholds.M04.tempMax,6);
+});
+test('bundles round-trip with real and simulated sources separately',async()=>{
+ const {importProjectBundle,serializeProjectBundle}=await import('./project-bundle.js');
+ const layout=base();layout.equipment=[equip('M04',0,0)];
+ const data={schema:'ingebam.factorytwins.bundle',version:1,organizationId:'org_demo',siteId:'site_demo',layout,
+  telemetryReadings:[
+   {equipmentId:'M04',timestamp:'2026-11-24T04:17:00.000Z',source:'live',temp:3.1},
+   {equipmentId:'M04',timestamp:'2026-11-24T04:18:00.000Z',source:'simulated',temp:4.1}
+  ],events:[],maintenanceLogs:[]};
+ const once=importProjectBundle(data),twice=importProjectBundle(JSON.parse(serializeProjectBundle(once)));
+ assert.deepEqual(twice,once);
+ assert.deepEqual(twice.telemetryReadings.map(x=>x.source),['live','simulated']);
+});
+test('reject references to nonexistent equipment and invalid source',async()=>{
+ const {importProjectBundle}=await import('./project-bundle.js');
+ const layout=base();layout.equipment=[equip('M04',0,0)];
+ const sample={schema:'ingebam.factorytwins.bundle',version:1,layout,telemetryReadings:[]};
+ assert.throws(()=>importProjectBundle({...sample,events:[{id:'evt-001',equipmentId:'M99',timestamp:'2026-11-24T04:17:00.000Z',type:'alert',severity:'warn',message:'Bad'}]}));
+ assert.throws(()=>importProjectBundle({...sample,telemetryReadings:[{equipmentId:'M04',timestamp:'2026-11-24T04:17:00.000Z',source:'unknown',temp:2}]}));
+});
+test('geometry parser remains pure and strips operational fields',async()=>{
+ const p=base();p.organizationId='org-demo-01';p.equipment=[{...equip('M04',0,0),telemetry:{temp:4}}];
+ const out=parseProject(p);assert.equal(out.organizationId,undefined);assert.equal(out.equipment[0].telemetry,undefined);
+});
