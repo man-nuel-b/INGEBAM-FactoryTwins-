@@ -1,12 +1,20 @@
 import {parseProject,validateLayout} from './geometry.js';
+import {importProjectBundle,exportProjectBundle} from './project-bundle.js';
 import {buildMonitor,demoLayout,chooseAsset,simulateNext,maintainAsset,assetStatus,monitorSummary} from './monitor-domain.js';
 const $=id=>document.getElementById(id);
 const STORAGE='ingebam.factorytwins.studio.v03',TRANSFER='ingebam.factorytwins.monitor.transfer.v1';
-let state=buildMonitor(demoLayout()),view='2d',three=null;
+let state=buildMonitor(demoLayout()),view='2d',three=null,bundle=importProjectBundle(demoLayout());
 const fmt=(value,d=1)=>Number(value).toLocaleString('es-CL',{minimumFractionDigits:d,maximumFractionDigits:d});
 const notice=msg=>{$('message').textContent=msg};
 function loadProject(p){
- state=buildMonitor(parseProject(p));
+ const imported=importProjectBundle(p);
+ bundle=imported;
+ state=buildMonitor(imported.layout);
+ for(const asset of state.assets){
+  const initial=imported.initialAssetState[asset.id];
+  // Imported telemetry is not connected to real devices. Only simulated values may seed a demo.
+  if(initial?.source==='simulated')for(const field of ['temp','vib','power','health','running'])if(Object.hasOwn(initial,field))asset[field]=initial[field];
+ }
  if(state.assets.length===0)notice('Planta sin equipos: agrega maquinaria desde Studio.');
  $('load').value='100';$('ambient').value='22';
  draw();if(three)three.setLayout(state.layout);
@@ -138,6 +146,12 @@ $('pause').onclick=()=>{state={...state,paused:!state.paused};$('pause').textCon
 $('next').onclick=()=>{state=simulateNext({...state,paused:false});draw();notice('Intervalo simulado '+state.tick+' actualizado')};
 $('maintenance').onclick=()=>{try{state=maintainAsset(state,state.selected);draw();notice('Mantenimiento ficticio registrado.')}catch(e){notice(e.message)}};
 for(const id of ['load','ambient'])$(id).oninput=drawDetails;
-$('export').onclick=()=>download({...state,exportedAt:new Date().toISOString(),source:'SIMULATED_ONLY'},'factory-twins-monitor-simulado.json');
+$('export').onclick=()=>{
+ const current=exportProjectBundle({...bundle,layout:state.layout});
+ current.initialAssetState=Object.fromEntries(state.assets.map(a=>[a.id,{equipmentId:a.id,source:'simulated',temp:a.temp,vib:a.vib,power:a.power,health:a.health,running:a.running}]));
+ // Original imported historical readings remain tagged by their original source.
+ current.events=[...current.events,...state.events.map((event,i)=>({id:'evt_sim_'+String(i+1).padStart(3,'0'),equipmentId:event.assetId,type:event.type==='MAINTENANCE'?'maintenance':'status_change',severity:'info',message:event.message,timestamp:new Date().toISOString()}))];
+ download(exportProjectBundle(current),'factory-twins-bundle-simulado.json');
+};
 try{const transferred=sessionStorage.getItem(TRANSFER);if(transferred){loadProject(JSON.parse(transferred));sessionStorage.removeItem(TRANSFER);notice('Layout transferido desde Studio. Selecciona una máquina para supervisarla de forma simulada.')}}catch(e){notice('Transferencia no válida: '+e.message)}
 draw();
