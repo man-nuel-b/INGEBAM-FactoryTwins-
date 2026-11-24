@@ -59,3 +59,15 @@ El editor no reemplaza la aplicación de monitorización V0.2: ambos conviven en
 
 ### Restricciones antes de vender
 No hay pruebas de regresión de interfaz verificadas en navegadores reales, pruebas de seguridad, backend multiusuario, trazabilidad industrial ni aceptación de un cliente piloto. No usar la demo como herramienta para seguridad operacional.
+
+## Factory Twins Studio V0.3.2 — manipulación directa
+- Clic sobre un equipo para seleccionarlo, arrastrar sobre el suelo para desplazarlo.
+- El movimiento se valida **antes del commit**: si produce colisión con otro equipo o sale del perímetro, se revierte.
+- Ajuste de posición a cuadrícula de 0,25 m (desactivable).
+- Botones de giro de -15° y +15°, con rechazo de giros incompatibles.
+- El panel de edición numérica ahora rechaza cambios de equipo que producen una ubicación inválida.
+- Al cambiar dimensiones de nave, se rechazan nuevos conflictos de perímetro.
+- Las acciones aceptadas entran al historial deshacer/rehacer.
+- Pruebas de regresión de geometría ampliadas a 17 casos en `tests.html`.
+
+**Importante:** las validaciones modelan huellas rectangulares 2D y no representan los requisitos de distancias de seguridad o normativa de una instalación real. La interacción está implementada en código pero falta probar exhaustivamente en navegadores y dispositivos reales.
