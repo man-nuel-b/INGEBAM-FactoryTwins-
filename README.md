@@ -145,3 +145,16 @@ Este hito aún necesita pruebas de detección en imágenes industriales reales a
 **Propuesta de arquitectura multiempresa:** `architecture/postgres-schema-draft.sql` incluye tablas de organizaciones, membresías, plantas, equipos, lecturas, incidencias y mantenimiento con claves compuestas de pertenencia. Es **un borrador SQL no desplegado**. Las políticas RLS, el gateway industrial, autenticación e ingesta segura siguen pendientes: agregar un campo `tenant_id` por sí solo no proporciona aislamiento de datos.
 
 **Próximo hito recomendado:** vincular equipos del editor a activos del piloto mediante identificadores persistentes, guardar proyectos por organización con autenticación y validar un piloto autorizado con datos reales de solo lectura.
+
+## Etapa 1 — monitor unificado (nuevo MVP visual)
+[Monitor unificado 2D/3D](https://man-nuel-b.github.io/INGEBAM-FactoryTwins-/operations.html)
+
+- `monitor-domain.js` convierte cualquier `ingebam.factorytwins.project` válido en una sesión simulada de activos **con el mismo identificador persistente por equipo**.
+- `operations.html` y `operations.js` muestran el mismo layout tanto en SVG 2D como en una escena 3D básica Three.js; al seleccionar un equipo en cualquier vista se actualiza el mismo panel y viceversa.
+- Es posible cargar el JSON exportado desde Photo Mapper o Studio, reutilizar el proyecto guardado en el navegador o transferir el proyecto de Studio a Monitor en la misma pestaña.
+- El monitor presenta indicadores SIMULADOS, escenarios hipotéticos, mantenimiento ficticio y exportación de sesión JSON.
+- Se preservan explícitamente nombre, posición, dimensiones, rotación e identificadores del proyecto. No se afirma que un equipo construido desde fotografía equivalga a una medición técnica.
+- La visualización 3D usa geometrías genéricas que representan la envolvente del equipo; no es una reconstrucción de maquinaria real.
+- No altera el visor de demostración anterior ni el piloto de cadena de frío: ambos siguen disponibles de forma independiente.
+
+**Estado de aceptación:** implementado y bajo pruebas automatizadas de dominio/sintaxis. Quedan pendientes pruebas reales de interacción y rendimiento WebGL en distintos navegadores y la integración del historial de incidencias del piloto con los proyectos importados. Se requiere revisar problemas geométricos antes de cualquier decisión operativa.
