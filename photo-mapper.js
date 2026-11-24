@@ -7,6 +7,7 @@ const $=id=>document.getElementById(id);
 const KEY='ingebam.factorytwins.photomapper.transfer.v1';
 let photoURL=null, corners=[],machines=[],homography=null, mode='corners',nextNumber=1, suggestions=[],aiDetections=[],aiBusy=false,photoRevision=0;
 const svg=$('overlay'),ns='http://www.w3.org/2000/svg';
+let lastValidSite={width:27,depth:19};
 function feedback(t){$('feedback').textContent=t;}
 function numeric(id,min,max){const n=Number($(id).value);if(!Number.isFinite(n)||n<min||n>max)throw Error('Valor fuera de rango: '+id);return n;}
 function site(){return {width:numeric('width',12,120),depth:numeric('depth',12,120)}}
@@ -49,6 +50,7 @@ function addAtPoint(x,y){
 function recalibrate(){
  validateCorners(corners);
  homography=solveHomography(corners,floorCorners(site().width,site().depth));
+ lastValidSite=site();
  $('markMode').disabled=false;
 }
 function buildProject(source=machines){
@@ -194,9 +196,10 @@ for(const id of ['width','depth'])$(id).addEventListener('change',()=>{
    const problems=validateLayout(candidate).errors;
    if(problems.length){
     homography=previous;
-    feedback('Nueva escala presenta '+problems.length+' conflictos. Ajusta tamaño o ubicación antes de exportar.');
-   }else{homography=newHomography;machines=adjusted;feedback('Escala modificada y geometría verificada.')}
-  }catch(e){feedback('No se pudo recalibrar: '+e.message)}
+    $('width').value=lastValidSite.width;$('depth').value=lastValidSite.depth;
+    feedback('Escala rechazada: '+problems.length+' conflictos geométricos.');
+   }else{homography=newHomography;machines=adjusted;lastValidSite=site();feedback('Escala modificada y geometría verificada.')}
+  }catch(e){$('width').value=lastValidSite.width;$('depth').value=lastValidSite.depth;feedback('No se pudo recalibrar: '+e.message)}
  }render();
 });
 function download(name,content){
