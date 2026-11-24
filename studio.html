@@ -2,18 +2,18 @@
 <html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0b1624"><title>Factory Twins Studio V0.3 | INGEBAM</title>
 <link rel="stylesheet" href="studio.css"></head><body>
-<header><div><strong>INGEBAM <span>FACTORY TWINS STUDIO</span></strong><small>Editor de plantas industriales · V0.3.1 · Prototipo sin sensores reales</small></div>
+<header><div><strong>INGEBAM <span>FACTORY TWINS STUDIO</span></strong><small>Editor de plantas industriales · V0.3.2 · Prototipo sin sensores reales</small></div>
 <nav><a href="./index.html">← Monitor V0.2</a><button id="help" type="button">Ayuda</button></nav></header>
 <main>
 <section class="toolbar">
 <div class="toolgroup"><button id="add" class="primary" type="button">+ Agregar equipo</button><button id="duplicate" type="button">Duplicar</button><button id="remove" type="button">Eliminar</button></div>
-<div class="toolgroup"><button id="undo" type="button">↶ Deshacer</button><button id="redo" type="button">↷ Rehacer</button><button id="home" type="button">Vista inicial</button></div>
-<div class="toolgroup"><button id="save" type="button">Guardar local</button><button id="export" type="button">Exportar JSON</button><button id="import" type="button">Importar JSON</button><input id="file" hidden type="file" accept=".json,application/json"></div>
+<div class="toolgroup"><button id="undo" type="button">↶ Deshacer</button><button id="redo" type="button">↷ Rehacer</button><button id="rotateLeft" type="button" title="Girar equipo 15° a la izquierda">↶ 15°</button><button id="rotateRight" type="button" title="Girar equipo 15° a la derecha">15° ↷</button><button id="home" type="button">Vista inicial</button></div>
+<div class="toolgroup"><label class="snap-toggle"><input type="checkbox" id="snap" checked> Cuadrícula 0,25 m</label></div><div class="toolgroup"><button id="save" type="button">Guardar local</button><button id="export" type="button">Exportar JSON</button><button id="import" type="button">Importar JSON</button><input id="file" hidden type="file" accept=".json,application/json"></div>
 </section>
 <div class="work">
 <section class="viewport-panel"><div class="vp-head"><div><h1 id="projectName">Planta piloto INGEBAM</h1><p>Selecciona un equipo para moverlo, rotarlo o cambiar su tamaño.</p></div><span class="tag">PLANO DEMOSTRATIVO</span></div>
 <div id="viewport" role="region" aria-label="Editor interactivo de planta tridimensional"><div class="loading">Iniciando visor 3D…</div></div>
-<div class="vp-bottom"><span>Arrastrar: girar cámara · Rueda: zoom · Clic: seleccionar · Posiciones en metros</span><span id="status" role="status" aria-live="polite">Sin cambios</span></div>
+<div class="vp-bottom"><span>Arrastra una máquina para moverla · Arrastra el fondo para girar cámara · Rueda: zoom · Giro: botones ±15°</span><span id="status" role="status" aria-live="polite">Sin cambios</span></div>
 <section class="assets"><div class="asset-title"><h2>Inventario de equipos</h2><span id="counter">0 activos</span></div><div id="inventory" class="asset-list"></div></section></section>
 <aside>
 <section class="panel"><h2>Proyecto</h2><label for="name">Nombre de la planta</label><input id="name" maxlength="80" type="text" value="Planta piloto INGEBAM">
@@ -29,6 +29,6 @@
 <section class="panel"><h2>Validación del diseño</h2><div id="validation" class="validation"></div><button id="check" type="button">Revisar distribución</button></section>
 <section class="panel"><h2>Datos y seguridad</h2><p class="muted">Los proyectos se guardan únicamente en el navegador o en archivos JSON descargados. No hay cuentas, base de datos, sensores reales ni sincronización cloud.</p><button id="reset" type="button">Restaurar planta demostrativa</button></section>
 </aside></div>
-</main><dialog id="guide"><h2>Cómo utilizar Factory Twins Studio</h2><p>Agrega equipos desde el catálogo, selecciónalos en el modelo 3D o en la lista, ajusta su ubicación y tamaño en metros y valida que no haya traslapes. Guarda localmente o exporta un JSON como respaldo. Un JSON importado sustituirá el proyecto actual, después de validar su estructura.</p><p>Los modelos son conceptuales y las dimensiones deben verificarse en terreno antes de decisiones operativas.</p><form method="dialog"><button class="primary">Cerrar</button></form></dialog>
+</main><dialog id="guide"><h2>Cómo utilizar Factory Twins Studio</h2><p>Agrega equipos, arrástralos sobre el suelo, usa los botones ±15° para girarlos y activa la cuadrícula opcional. Las ubicaciones inválidas se rechazan al soltar. También puedes editar las propiedades numéricas.  Guarda localmente o exporta un JSON como respaldo. Un JSON importado sustituirá el proyecto actual, después de validar su estructura.</p><p>Los modelos son conceptuales y las dimensiones deben verificarse en terreno antes de decisiones operativas.</p><form method="dialog"><button class="primary">Cerrar</button></form></dialog>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module" src="studio.js"></script></body></html>
