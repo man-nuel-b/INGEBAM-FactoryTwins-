@@ -1,0 +1,26 @@
+name: Factory Twins CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  geometry-and-photo-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check studio.js
+          node --check photo-mapper.js
+          node --check photo-regions.js
+          node --check photo-geometry.js
+      - name: Regression tests
+        run: npm test
