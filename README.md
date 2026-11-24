@@ -114,3 +114,11 @@ Pruebas de calibración previstas en [photo-tests.html](https://man-nuel-b.githu
 
 ### Pendiente de validación
 Este hito aún necesita pruebas de detección en imágenes industriales reales autorizadas, precisión por categoría, tiempos de carga y rendimiento en equipos modestos. No debe utilizarse como reconstrucción industrial precisa ni sistema de seguridad.
+
+## Auditoría técnica — endurecimiento del visor y regresiones (noviembre 2026)
+
+- `factory3d.js` comprueba explícitamente `host.hidden` y `getClientRects()` para pausar renderizado cuando se muestra la vista 2D; reinicia el reloj de animación al reanudar.
+- Añadida liberación de `ResizeObserver`, controles OrbitControls, geometrías, materiales, renderer y listeners en `pagehide`.
+- `node-tests.mjs` incorpora pruebas de calibración degenerada, horizonte proyectivo, NaN, cuadrilátero cruzado y regla literal de limpieza de nombres.
+- La regla `plain(s)` elimina **solo** los signos `<` y `>`, por lo que `<b>Demo</b>` se transforma en `bDemo/b`. El código y la prueba ya coinciden; no se modifica sin justificación.
+- Queda pendiente modernizar el formateo del proyecto, deshacer el contrato global entre visor y simulación, empaquetar dependencias y pruebas de interacción en navegadores reales. El manejo de modelos de IA mediante CDN sigue siendo experimental.
