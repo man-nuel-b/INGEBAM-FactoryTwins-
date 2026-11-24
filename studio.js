@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {EQUIPMENT_TYPES,parseProject,validateLayout} from './geometry.js';
+import {importProjectBundle} from './project-bundle.js';
 const $=id=>document.getElementById(id), STORAGE='ingebam.factorytwins.studio.v03';
 const types=EQUIPMENT_TYPES;
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -90,8 +91,8 @@ $('applySite').onclick=()=>{
   status('Dimensiones de planta actualizadas');
  }catch(e){alert(e.message);renderAll()}
 };
-$('undo').onclick=()=>{if(!history.length)return;future.push(clone(project));project=history.pop();selected=project.equipment.some(e=>e.id===selected)?selected:project.equipment[0]?.id;renderAll();status('Acción deshecha')};
-$('redo').onclick=()=>{if(!future.length)return;history.push(clone(project));project=future.pop();selected=project.equipment.some(e=>e.id===selected)?selected:project.equipment[0]?.id;renderAll();status('Acción rehecha')};
+$('undo').onclick=()=>{if(!history.length)return;future.push(clone(project));project=history.pop();dirty=true;revision++;selected=project.equipment.some(e=>e.id===selected)?selected:project.equipment[0]?.id;renderAll();status('Acción deshecha')};
+$('redo').onclick=()=>{if(!future.length)return;history.push(clone(project));project=future.pop();dirty=true;revision++;selected=project.equipment.some(e=>e.id===selected)?selected:project.equipment[0]?.id;renderAll();status('Acción rehecha')};
 $('home').onclick=()=>{camera.position.set(23,24,31);controls.target.set(0,0,0);controls.update()};
 $('check').onclick=()=>{const n=audit().errors.length;status(n?n+' observaciones detectadas':'Distribución validada geométricamente')};
 $('save').onclick=()=>{try{localStorage.setItem(STORAGE,JSON.stringify(project));dirty=false;status('Proyecto guardado en este navegador')}catch(e){alert('No se pudo guardar localmente: '+e.message)}};
@@ -106,7 +107,7 @@ $('monitor').onclick=()=>{
  }catch(err){status('No se pudo abrir el monitor: '+err.message)}
 };
 $('import').onclick=()=>$('file').click();
-$('file').onchange=async()=>{const file=$('file').files?.[0];$('file').value='';if(!file)return;if(file.size>1024*1024){alert('El archivo supera 1 MB');return}try{const p=parseProject(JSON.parse(await file.text()));if(!confirm('¿Reemplazar el proyecto actual con '+p.name+'?'))return;history.push(clone(project));future=[];project=p;selected=project.equipment[0]?.id||null;renderAll();status('Proyecto JSON importado')}catch(e){alert('Importación rechazada: '+e.message)}};
+$('file').onchange=async()=>{const file=$('file').files?.[0];$('file').value='';if(!file)return;if(file.size>1024*1024){alert('El archivo supera 1 MB');return}try{const input=JSON.parse(await file.text());const p=importProjectBundle(input).layout;const operational=input.schema==='ingebam.factorytwins.bundle'||input.equipment?.some(e=>e.telemetry);if(!confirm('¿Reemplazar el layout actual con '+p.name+'?'+(operational?' Studio edita solo geometría; para conservar telemetría e historial utiliza el Monitor unificado.':'')))return;history.push(clone(project));future=[];project=p;selected=project.equipment[0]?.id||null;dirty=true;revision++;renderAll();status('Layout importado; datos operacionales excluidos de Studio')}catch(e){alert('Importación rechazada: '+e.message)}};
 $('reset').onclick=()=>{if(!confirm('¿Restaurar la demostración? Se perderán los cambios sin guardar.'))return;history.push(clone(project));future=[];project=demo();selected='M04';renderAll();status('Planta demostrativa restaurada')};
 $('help').onclick=()=>$('guide').showModal();
 
