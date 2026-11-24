@@ -177,3 +177,35 @@ test('geometry parser remains pure and strips operational fields',async()=>{
  const p=base();p.organizationId='org-demo-01';p.equipment=[{...equip('M04',0,0),telemetry:{temp:4}}];
  const out=parseProject(p);assert.equal(out.organizationId,undefined);assert.equal(out.equipment[0].telemetry,undefined);
 });
+
+test('original six-machine dashboard exports valid geometry and separate telemetry',async()=>{
+ const {legacySimulationBundle}=await import('./legacy-demo-adapter.js');
+ const {demoLayout}=await import('./monitor-domain.js');
+ const equipment=demoLayout().equipment.map(e=>({id:e.id,temp:4.5,vib:2,power:10,health:90,running:true,cold:e.kind==='coldroom'}));
+ const bundle=legacySimulationBundle({items:equipment});
+ assert.equal(bundle.layout.equipment.length,6);
+ assert.equal(bundle.initialAssetState.M04.source,'simulated');
+ assert.equal(bundle.layout.equipment[0].x,-7);
+ assert.equal(bundle.telemetryReadings.length,0);
+});
+test('dashboard event, maintenance and readings survive export with IDs',async()=>{
+ const {legacySimulationBundle}=await import('./legacy-demo-adapter.js');
+ const {demoLayout}=await import('./monitor-domain.js');
+ const items=demoLayout().equipment.map(e=>({id:e.id,temp:4.5,vib:2,power:10,health:90,running:true,cold:e.kind==='coldroom'}));
+ const when='2026-11-24T04:17:00.000Z';
+ const event={id:'evt-00001',equipmentId:'M04',timestamp:when,type:'status_change',severity:'warn',message:'Alerta simulada'};
+ const maintenance={id:'mnt-00001',equipmentId:'M04',timestamp:when,summary:'Prueba',vibDeltaFactor:.55,healthDelta:14};
+ const reading={equipmentId:'M04',timestamp:when,source:'simulated',temp:4.5,vib:2,power:10};
+ const b=legacySimulationBundle({items,events:[event,{...event,id:'evt-00002',equipmentId:null}],maintenanceLogs:[maintenance],readings:[reading]});
+ assert.equal(b.events.length,1);
+ assert.equal(b.events[0].equipmentId,'M04');
+ assert.equal(b.maintenanceLogs[0].equipmentId,'M04');
+ assert.equal(b.telemetryReadings[0].source,'simulated');
+});
+test('legacy dashboard adapter rejects unknown machine and nonfinite data',async()=>{
+ const {legacySimulationBundle}=await import('./legacy-demo-adapter.js');
+ const {demoLayout}=await import('./monitor-domain.js');
+ const items=demoLayout().equipment.map(e=>({id:e.id,temp:4.5,vib:2,power:10,health:90,running:true,cold:e.kind==='coldroom'}));
+ assert.throws(()=>legacySimulationBundle({items:items.map((x,i)=>i===0?{...x,id:'X01'}:x)}));
+ assert.throws(()=>legacySimulationBundle({items:items.map((x,i)=>i===0?{...x,power:Infinity}:x)}));
+});
