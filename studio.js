@@ -23,14 +23,17 @@ const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamp
 scene.add(new THREE.HemisphereLight(0xc2e2ff,0x2b4250,2.25));
 const sun=new THREE.DirectionalLight(0xffffff,3);sun.position.set(-15,25,18);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-70;sun.shadow.camera.right=70;sun.shadow.camera.top=70;sun.shadow.camera.bottom=-70;scene.add(sun);
 const material=(c,metal=.3,rough=.5)=>new THREE.MeshStandardMaterial({color:c,metalness:metal,roughness:rough});
-const concrete=material(0x45596b,.12,.85),steel=material(0x99afba,.65,.38),dark=material(0x2a4252,.55,.49),glass=material(0x6ba6b3,.24,.2),yellow=material(0xf3c46e,.25,.56),red=material(0xcc655a,.25,.6),selectedMat=material(0x2ae1c4,.45,.33);
+const concrete=material(0x45596b,.12,.85),steel=material(0x99afba,.65,.38),dark=material(0x2a4252,.55,.49),glass=material(0x6ba6b3,.24,.2),yellow=material(0xf3c46e,.25,.56),red=material(0xcc655a,.25,.6),selectedMat=material(0x2ae1c4,.45,.33),lineMat=material(0xf4c05b,.1,.8);
 let siteRoot=null,machineRoot=null,pickables=[];const machineGroups=new Map();
 function block(parent,w,h,d,x,y,z,mat){const obj=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);obj.position.set(x,y,z);obj.castShadow=true;obj.receiveShadow=true;parent.add(obj);return obj;}
 function cyl(parent,rt,rb,h,x,y,z,mat){const o=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,20),mat);o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o}
-function disposeGroup(g){g.traverse(o=>{if(o.isMesh)o.geometry.dispose()});if(g.parent)g.parent.remove(g)}
+function disposeGroup(g){g.traverse(o=>{
+ if(o.geometry)o.geometry.dispose();
+ if(o.isLineSegments){const materials=Array.isArray(o.material)?o.material:[o.material];for(const m of materials)m.dispose()}
+});if(g.parent)g.parent.remove(g)}
 function drawSite(){if(siteRoot)disposeGroup(siteRoot);siteRoot=new THREE.Group();scene.add(siteRoot);
  const {width:w,depth:d}=project.site;block(siteRoot,w,.3,d,0,-.2,0,concrete);
- const line=material(0xf4c05b,.1,.8);for(let x=-w/2+1;x<w/2;x+=4)block(siteRoot,.06,.02,d,x,-.025,0,dark);
+ const line=lineMat;for(let x=-w/2+1;x<w/2;x+=4)block(siteRoot,.06,.02,d,x,-.025,0,dark);
  for(let z=-d/2+1;z<d/2;z+=4)block(siteRoot,w,.02,.06,0,-.025,z,dark);
  for(const x of [-w/2+.4,w/2-.4])for(const z of [-d/2+.4,d/2-.4])block(siteRoot,.23,4.4,.23,x,2.2,z,steel);
  for(const x of [-w/2+.4,w/2-.4])block(siteRoot,.14,.14,d,x,4.42,0,steel);
@@ -50,7 +53,7 @@ function drawMachines(){if(machineRoot)disposeGroup(machineRoot);machineRoot=new
   }else if(m.kind==='compressor'){const c=cyl(g,m.d*.28,m.d*.28,m.w*.78,0,m.h*.47,0,body);c.rotation.z=Math.PI/2;block(g,m.w*.4,m.h*.25,m.d*.6,0,m.h*.82,0,dark);}
   else if(m.kind==='rack'){for(const x of [-m.w*.45,m.w*.45])for(const z of [-m.d*.45,m.d*.45])block(g,.12,m.h,.12,x,m.h/2,z,steel);for(const y of [.3,.6,.9])block(g,m.w*.95,.1,m.d*.95,0,m.h*y,0,body);}
   else{for(const x of [-m.w*.42,m.w*.42])for(const z of [-m.d*.42,m.d*.42])block(g,.14,m.h*.45,.14,x,m.h*.25,z,dark);block(g,m.w*.9,m.h*.2,m.d*.85,0,m.h*.6,0,body);if(m.kind==='packager')block(g,m.w*.36,m.h*.22,m.d*.48,0,m.h*.8,0,glass);}
-  if(m.id===selected){const geo=new THREE.EdgesGeometry(new THREE.BoxGeometry(m.w+.15,m.h+.2,m.d+.15));const wire=new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:0x3cffe3,transparent:true,opacity:.8}));wire.position.y=m.h/2;g.add(wire);}
+  if(m.id===selected){const bounds=new THREE.BoxGeometry(m.w+.15,m.h+.2,m.d+.15);const geo=new THREE.EdgesGeometry(bounds);bounds.dispose();const wire=new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:0x3cffe3,transparent:true,opacity:.8}));wire.position.y=m.h/2;g.add(wire);}
   g.traverse(obj=>{if(obj.isMesh){obj.userData.machineId=m.id;pickables.push(obj)}});
  }
 }
@@ -200,7 +203,8 @@ function rotateSelected(delta){
 $('rotateLeft').onclick=()=>rotateSelected(-15);
 $('rotateRight').onclick=()=>rotateSelected(15);
 const ro=new ResizeObserver(()=>{const w=container.clientWidth,h=container.clientHeight;if(!w||!h)return;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)});ro.observe(container);
-let last=0;function frame(t){requestAnimationFrame(frame);if(document.hidden)return;last=t;controls.update();renderer.render(scene,camera)}requestAnimationFrame(frame);
+let frameId=0,disposed=false;function frame(){if(disposed)return;frameId=requestAnimationFrame(frame);if(document.hidden||!container.isConnected)return;controls.update();renderer.render(scene,camera)}frameId=requestAnimationFrame(frame);
+window.addEventListener('pagehide',()=>{disposed=true;cancelAnimationFrame(frameId);ro.disconnect();controls.dispose();if(siteRoot)disposeGroup(siteRoot);if(machineRoot)disposeGroup(machineRoot);for(const m of [concrete,steel,dark,glass,yellow,red,selectedMat,lineMat])m.dispose();renderer.dispose();},{once:true});
 try{
  const transfer=sessionStorage.getItem('ingebam.factorytwins.photomapper.transfer.v1');
  if(transfer){
