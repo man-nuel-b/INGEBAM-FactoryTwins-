@@ -122,3 +122,26 @@ Este hito aún necesita pruebas de detección en imágenes industriales reales a
 - `node-tests.mjs` incorpora pruebas de calibración degenerada, horizonte proyectivo, NaN, cuadrilátero cruzado y regla literal de limpieza de nombres.
 - La regla `plain(s)` elimina **solo** los signos `<` y `>`, por lo que `<b>Demo</b>` se transforma en `bDemo/b`. El código y la prueba ya coinciden; no se modifica sin justificación.
 - Queda pendiente modernizar el formateo del proyecto, deshacer el contrato global entre visor y simulación, empaquetar dependencias y pruebas de interacción en navegadores reales. El manejo de modelos de IA mediante CDN sigue siendo experimental.
+
+## MVP piloto v0.7: cadena de frío simulada
+
+[Abrir piloto de cadena de frío](https://man-nuel-b.github.io/INGEBAM-FactoryTwins-/pilot.html)
+
+**Caso de uso:** instalación ficticia con dos cámaras de frío y un compresor. El motor puro `pilot-engine.js` genera lecturas sintéticas reproducibles a intervalos artificiales de 5 minutos; una cámara incorpora degradación deliberada para demostrar alertas, reconocimiento de incidencias e intervención de mantenimiento.
+
+**Incluye:**
+- Tablero independiente de temperatura, vibración, potencia y energía estimada.
+- Historial de temperatura dibujado en Canvas, con umbral y serie de lecturas simuladas.
+- Incidencias por cruce de umbral, reconocimiento manual y bitácora de mantenimiento ficticio.
+- Exportación de JSON etiquetado como `SIMULATED`.
+- Estructura de datos con `tenantId` y `plantId` para preparar posterior evolución multiempresa.
+- Pruebas de dominio en `node-tests.mjs` y comprobaciones de sintaxis en CI.
+
+**Lo que NO hace:**
+- No integra el layout de Photo Mapper / Studio con el piloto todavía; es un caso operativo independiente.
+- No tiene conectividad MQTT/OPC UA, backend autenticado, series históricas reales, persistencia permanente, notificaciones externas, acceso por organización o predicción estadística validada.
+- No mide consumo real: suma kW sintéticos por 5/60 para una estimación kWh. No utilizar para facturación ni decisiones de seguridad.
+
+**Propuesta de arquitectura multiempresa:** `architecture/postgres-schema-draft.sql` incluye tablas de organizaciones, membresías, plantas, equipos, lecturas, incidencias y mantenimiento con claves compuestas de pertenencia. Es **un borrador SQL no desplegado**. Las políticas RLS, el gateway industrial, autenticación e ingesta segura siguen pendientes: agregar un campo `tenant_id` por sí solo no proporciona aislamiento de datos.
+
+**Próximo hito recomendado:** vincular equipos del editor a activos del piloto mediante identificadores persistentes, guardar proyectos por organización con autenticación y validar un piloto autorizado con datos reales de solo lectura.
