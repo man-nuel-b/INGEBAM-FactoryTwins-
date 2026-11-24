@@ -65,8 +65,31 @@ function append(kind){if(project.equipment.length>=150)throw Error('El prototipo
 $('add').onclick=()=>{const choices=Object.keys(types);const message=choices.map((v,i)=>(i+1)+'. '+types[v]).join('\n');const pick=prompt('Selecciona un equipo (1-'+choices.length+'):\n'+message,'1');if(pick===null)return;const idx=Number(pick)-1;if(!Number.isInteger(idx)||idx<0||idx>=choices.length){alert('Selecciona un número del catálogo.');return}try{append(choices[idx])}catch(e){alert(e.message)}};
 $('duplicate').onclick=()=>{const e=project.equipment.find(x=>x.id===selected);if(!e)return;try{const id=nextId();mutation(()=>project.equipment.push({...e,id,label:e.label+' copia',x:e.x+e.w+0.5}));select(id)}catch(err){alert(err.message)}};
 $('remove').onclick=()=>{if(!selected)return;mutation(()=>{project.equipment=project.equipment.filter(e=>e.id!==selected)});selected=project.equipment[0]?.id||null;renderAll();};
-$('apply').onclick=()=>{const e=project.equipment.find(e=>e.id===selected);if(!e)return;try{mutation(()=>{for(const k of ['label','kind'])e[k]=$(k).value;for(const k of ['x','z','w','d','h','rotation'])e[k]=Number($(k).value)});}catch(err){alert(err.message);properties()}};
-$('applySite').onclick=()=>{try{mutation(()=>{project.name=$('name').value;project.site.width=Number($('width').value);project.site.depth=Number($('depth').value)})}catch(e){alert(e.message);renderAll()}};
+$('apply').onclick=()=>{
+ const e=project.equipment.find(e=>e.id===selected);if(!e)return;
+ try{
+  const candidate=clone(project),edited=candidate.equipment.find(x=>x.id===selected);
+  for(const k of ['label','kind'])edited[k]=$(k).value;
+  for(const k of ['x','z','w','d','h','rotation'])edited[k]=Number($(k).value);
+  const parsed=parseProject(candidate);
+  if(validate(parsed).perId[selected])throw Error('Colisión o equipo fuera del perímetro. Revisa dimensiones y posición.');
+  mutation(()=>{Object.assign(project.equipment.find(x=>x.id===selected),parsed.equipment.find(x=>x.id===selected))});
+  status('Propiedades actualizadas');
+ }catch(err){alert(err.message);properties()}
+};
+$('applySite').onclick=()=>{
+ try{
+  const candidate=clone(project);
+  candidate.name=$('name').value;
+  candidate.site.width=Number($('width').value);
+  candidate.site.depth=Number($('depth').value);
+  const parsed=parseProject(candidate),oldIssues=new Set(validate(project).errors);
+  const issues=validate(parsed).errors.filter(x=>!oldIssues.has(x));
+  if(issues.length)throw Error('La nueva nave deja equipos fuera del perímetro o introduce conflictos: '+issues.slice(0,2).join(' / '));
+  mutation(()=>{project.name=parsed.name;project.site=parsed.site});
+  status('Dimensiones de planta actualizadas');
+ }catch(e){alert(e.message);renderAll()}
+};
 $('undo').onclick=()=>{if(!history.length)return;future.push(clone(project));project=history.pop();selected=project.equipment.some(e=>e.id===selected)?selected:project.equipment[0]?.id;renderAll();status('Acción deshecha')};
 $('redo').onclick=()=>{if(!future.length)return;history.push(clone(project));project=future.pop();selected=project.equipment.some(e=>e.id===selected)?selected:project.equipment[0]?.id;renderAll();status('Acción rehecha')};
 $('home').onclick=()=>{camera.position.set(23,24,31);controls.target.set(0,0,0);controls.update()};
