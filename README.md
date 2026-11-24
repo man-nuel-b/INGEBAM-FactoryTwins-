@@ -183,3 +183,19 @@ La pantalla `index.html` mantiene su demostración 2D/3D y el contrato `window.F
 El nuevo `legacy-demo-adapter.js` exporta esos datos como `ingebam.factorytwins.bundle` v1, compatible con `operations.js`. La geometría procede del layout en **metros** de `monitor-domain.js`; los campos `x,y,w,h` de `app.js` pertenecen únicamente al esquema gráfico 2D y no deben confundirse con metros.
 
 `geometry.js` y su `parseProject` original permanecen intactos; la extensión de proyecto se valida en `project-bundle.js`. No existe control industrial ni telemetría real.
+
+## Checklist de cierre del Paso 1 (noviembre 2026)
+
+Auditoría de archivos existentes: `studio.html`, `photo-mapper.html`, `photo-regions.js`, `geometry.js`, `photo-mapper.js`, `node-tests.mjs`, `operations.html` y `factory3d.js`.
+
+**Correcciones aplicadas**
+- Nuevo `photo-layout.js`: contrato puro de colocación; convierte puntos de imagen a metros (`x,z`), verifica el esquema con `parseProject` y rechaza equipos con SAT o salida del margen perimetral de 10 cm.
+- El mapeador emplea el mismo contrato para colocación manual, regiones y propuestas de IA revisadas por un usuario; ningún candidato es incorporado automáticamente.
+- Al variar las dimensiones del plano, se recalculan posiciones y se revierte la edición si aparecen conflictos geométricos.
+- Se bloquean exportación y transferencia a Studio si existen conflictos. Los cálculos siguen siendo aproximaciones a partir de una homografía de suelo y dimensiones introducidas manualmente.
+- Casos Node.js adicionales sobre esquinas, proyección, posiciones inválidas, colisiones y presencia de controles HTML.
+
+**Pendiente antes de declarar cierre industrial completo de la Etapa 1**
+- Pruebas de interfaz de extremo a extremo en navegador con fotografías representativas (calibración realista, navegación Studio → Monitor, WebGL 2D/3D, teclado, móvil).
+- Pruebas de carga de modelos y recuperación ante errores de CDN o WebGL; validación de que los valores operacionales siguen correspondiendo al mismo activo seleccionado en distintas vistas.
+- Casos de aceptación con usuarios industriales y medidas verificadas en terreno. Ningún modelo estimado sustituye un levantamiento técnico profesional.
