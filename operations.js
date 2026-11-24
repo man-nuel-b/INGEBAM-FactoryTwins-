@@ -17,7 +17,7 @@ function loadProject(p){
  }
  if(state.assets.length===0)notice('Planta sin equipos: agrega maquinaria desde Studio.');
  $('load').value='100';$('ambient').value='22';
- draw();if(three)three.setLayout(state.layout);
+ draw();
 }
 function select(id){
  state=chooseAsset(state,id);
@@ -140,7 +140,7 @@ $('import').onclick=()=>$('file').click();
 $('file').onchange=async()=>{
  const file=$('file').files?.[0];$('file').value='';if(!file)return;
  if(file.size>1024*1024){notice('Archivo mayor a 1 MB; importación rechazada.');return}
- try{const p=parseProject(JSON.parse(await file.text()));loadProject(p);notice('Planta importada: equipos compartidos entre 2D, 3D y simulación.')}catch(e){notice('Proyecto inválido: '+e.message)}
+ try{const payload=JSON.parse(await file.text());loadProject(payload);notice('Proyecto importado con su layout y metadatos operacionales compatibles. Monitor en modo SIMULATED.')}catch(e){notice('Proyecto inválido: '+e.message)}
 };
 $('pause').onclick=()=>{state={...state,paused:!state.paused};$('pause').textContent=state.paused?'Reanudar':'Pausar';draw()};
 $('next').onclick=()=>{state=simulateNext({...state,paused:false});draw();notice('Intervalo simulado '+state.tick+' actualizado')};
