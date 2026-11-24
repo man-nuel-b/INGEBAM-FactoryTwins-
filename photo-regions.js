@@ -46,6 +46,6 @@ export function suggestRegions(imageData,options={}){
  boxes.sort((a,b)=>b.score-a.score);
  const kept=[];
  const iou=(a,b)=>{const l=Math.max(a.x,b.x),t=Math.max(a.y,b.y),r=Math.min(a.x+a.w,b.x+b.w),bt=Math.min(a.y+a.h,b.y+b.h),inter=Math.max(0,r-l)*Math.max(0,bt-t);return inter/(a.w*a.h+b.w*b.h-inter||1)};
- for(const box of boxes){if(kept.every(k=>iou(k,box)<.35)){kept.push(box);if(kept.length>Math.min(15,options.maxResults||8))break}}
+ for(const box of boxes){if(kept.every(k=>iou(k,box)<.35)){kept.push(box);if(kept.length>=Math.min(15,Math.max(1,Math.floor(options.maxResults||8))))break}}
  return kept;
 }
