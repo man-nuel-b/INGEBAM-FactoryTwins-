@@ -256,3 +256,39 @@ test('Studio and monitor preserve explicit handoff controls',async()=>{
  assert.match(monitor,/id="view2"/);assert.match(monitor,/id="view3"/);
  assert.match(monitor,/id="load"/);assert.match(monitor,/id="ambient"/);
 });
+
+test('audit: Photo Mapper enables both analysis controls after image load',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const js=readFileSync(new URL('./photo-mapper.js',import.meta.url),'utf8');
+ const onload=js.match(/img\.onload=\(\)=>\{([^}]+)\}/)?.[1]||'';
+ assert.match(onload,/suggestRegions'\)\.disabled=false/);
+ assert.match(onload,/detectAI'\)\.disabled=aiBusy/);
+});
+test('audit: operational monitor imports full bundle without geometry-only normalization',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const src=readFileSync(new URL('./operations.js',import.meta.url),'utf8');
+ assert.match(src,/loadProject\(payload\)/);
+ assert.doesNotMatch(src,/loadProject\(parseProject\(JSON\.parse/);
+});
+test('audit: Studio imports only validated geometry from operational bundle',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const src=readFileSync(new URL('./studio.js',import.meta.url),'utf8');
+ assert.match(src,/importProjectBundle\(input\)\.layout/);
+});
+test('audit: edge-density suggestion count respects a strict upper bound',()=>{
+ const width=224,height=224,data=new Uint8ClampedArray(width*height*4);
+ // Alternating high-contrast islands separated by low-contrast cells.
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+  const i=4*(y*width+x),island=Math.floor(x/28)%2===0&&Math.floor(y/28)%2===0;
+  const value=island&&((x+y)%7<3)?245:15;
+  data[i]=data[i+1]=data[i+2]=value;data[i+3]=255;
+ }
+ for(const maxResults of [1,2,4,8])assert.ok(suggestRegions({width,height,data},{maxResults}).length<=maxResults);
+});
+test('audit: Stage 1 shared monitor uses same identifiers in 2D and 3D source',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const src=readFileSync(new URL('./operations.js',import.meta.url),'utf8');
+ assert.match(src,/select\(e\.id\)/);
+ assert.match(src,/objectsById\.set\(e\.id,mesh\)/);
+ assert.match(src,/select\(ids\.get\(picked\.object\)\)/);
+});
