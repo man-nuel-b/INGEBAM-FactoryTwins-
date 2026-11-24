@@ -79,20 +79,33 @@ export function importProjectBundle(input){
   if(!Array.isArray(incoming)||incoming.length>20000)throw Error('Demasiadas lecturas');
   for(const r of incoming)telemetry.push(reading(r,ids));
  }
- const nested=[];
+ const initialAssetState={};
  if(!isBundle)for(const e of embedded.equipment){
   if(e.telemetry===undefined)continue;
   const t=e.telemetry;
   if(!t||typeof t!=='object'||Array.isArray(t))throw Error('Telemetría inicial inválida');
   const mode=source(t.mode);
-  const one={equipmentId:e.id,timestamp:'2026-01-01T00:00:00.000Z',source:mode};
+  const one={equipmentId:e.id,source:mode};
   for(const [key,min,max] of [['temp',-100,200],['vib',0,100],['power',0,100000],['health',0,100]]){
    if(own(t,key)){if(!bounded(t[key],min,max))throw Error('Telemetría '+key+' inválida');one[key]=t[key];}
   }
   if(own(t,'running')){if(typeof t.running!=='boolean')throw Error('Estado inválido');one.running=t.running;}
-  nested.push(one);
+  initialAssetState[e.id]=one;
  }
  const configs={};
+ if(isBundle&&input.initialAssetState!==undefined){
+  if(!input.initialAssetState||typeof input.initialAssetState!=='object'||Array.isArray(input.initialAssetState))throw Error('Estados iniciales inválidos');
+  for(const [key,v] of Object.entries(input.initialAssetState)){
+   if(!ids.has(key)||!v||v.equipmentId!==key)throw Error('Estado inicial con equipo inexistente');
+   const row={equipmentId:key,source:source(v.source)};
+   for(const [field,min,max] of [['temp',-100,200],['vib',0,100],['power',0,100000],['health',0,100]])if(own(v,field)){
+    if(!bounded(v[field],min,max))throw Error('Estado inicial inválido');row[field]=v[field];
+   }
+   if(own(v,'running')){if(typeof v.running!=='boolean')throw Error('running inválido');row.running=v.running;}
+   initialAssetState[key]=row;
+  }
+ }
+
  if(isBundle){
   if(input.thresholds!==undefined){
    if(!input.thresholds||typeof input.thresholds!=='object'||Array.isArray(input.thresholds))throw Error('Umbrales inválidos');
@@ -104,7 +117,7 @@ export function importProjectBundle(input){
  }else for(const e of embedded.equipment){
   if(e.telemetry?.thresholds!==undefined)configs[e.id]=thresholds(e.telemetry.thresholds);
  }
- return {schema:BUNDLE_SCHEMA,version:1,organizationId:org,siteId,layout,thresholds:configs,telemetryReadings:[...telemetry,...nested],events:records(input.events,'eventos',ids,1000),maintenanceLogs:records(input.maintenanceLogs,'mantenimiento',ids,1000)};
+ return {schema:BUNDLE_SCHEMA,version:1,organizationId:org,siteId,layout,thresholds:configs,initialAssetState,telemetryReadings:telemetry,events:records(input.events,'eventos',ids,1000),maintenanceLogs:records(input.maintenanceLogs,'mantenimiento',ids,1000)};
 }
 export function exportProjectBundle(value){return importProjectBundle(value)}
 export function serializeProjectBundle(value){return JSON.stringify(exportProjectBundle(value),null,2)}
