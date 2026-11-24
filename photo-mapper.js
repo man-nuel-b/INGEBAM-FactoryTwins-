@@ -1,6 +1,7 @@
 import {parseProject,validateLayout,EQUIPMENT_TYPES} from './geometry.js';
 import {solveHomography,transformPoint,floorCorners,validateCorners} from './photo-geometry.js';
 import {suggestRegions} from './photo-regions.js';
+import {proposeEquipment} from './photo-layout.js';
 import {detectGenericObjects,isPotentiallyRelevant} from './photo-ai.js';
 const $=id=>document.getElementById(id);
 const KEY='ingebam.factorytwins.photomapper.transfer.v1';
@@ -34,17 +35,16 @@ function onImagePoint(e){
 }
 function addAtPoint(x,y){
  if(!homography)throw Error('Calibra cuatro esquinas antes de colocar equipos.');
- const [px,pz]=transformPoint(homography,x,y);
- if(Math.abs(px)>site().width/2+.01||Math.abs(pz)>site().depth/2+.01)throw Error('El centro elegido está fuera de la planta calibrada.');
  const width=numeric('machineW',.5,30),depth=numeric('machineD',.5,30),height=numeric('machineH',.5,20),rotation=numeric('rotation',-360000,360000);
- const kind=$('kind').value,custom=$('label').value.trim();
- if(!Object.prototype.hasOwnProperty.call(EQUIPMENT_TYPES,kind))throw Error('Selecciona una máquina del catálogo.');
- const id='P'+String(nextNumber).padStart(3,'0');
- const e={id,kind,label:custom||EQUIPMENT_TYPES[kind]+' '+id,x:Number(px.toFixed(3)),z:Number(pz.toFixed(3)),w:width,d:depth,h:height,rotation};
- const p=buildProject([...machines,{...e,imageX:x,imageY:y}]);
- const issue=validateLayout(p).perId[id];nextNumber++;
- machines.push({...e,imageX:x,imageY:y});
- feedback(issue?'Equipo añadido con observación geométrica: corrige en Studio.':'Equipo '+e.label+' ubicado en el plano.');
+ const kind=$('kind').value,custom=$('label').value.trim(),id='P'+String(nextNumber).padStart(3,'0');
+ if(!Object.prototype.hasOwnProperty.call(EQUIPMENT_TYPES,kind))throw Error('Tipo de maquinaria desconocido.');
+ const result=proposeEquipment({
+  project:buildProject(),homography,imageX:x,imageY:y,id,kind,
+  label:custom||EQUIPMENT_TYPES[kind]+' '+id,
+  dimensions:{w:width,d:depth,h:height,rotation}
+ });
+ machines.push({...result.equipment,imageX:x,imageY:y});nextNumber++;
+ feedback('Equipo '+result.equipment.label+' agregado sin colisiones ni invasión del perímetro.');
 }
 function recalibrate(){
  validateCorners(corners);
@@ -184,18 +184,32 @@ $('undoPoint').onclick=()=>{
 $('resetCorners').onclick=()=>{corners=[];homography=null;mode='corners';machines=[];suggestions=[];aiDetections=[];$('markMode').disabled=true;feedback('Calibración reiniciada.');render();};
 $('markMode').onclick=()=>{if(corners.length===4){mode='machines';feedback('Haz clic sobre los centros de los equipos.')}};
 $('clearItems').onclick=()=>{if(machines.length&&confirm('¿Eliminar los equipos identificados?')){machines=[];render();}};
-for(const id of ['width','depth'])$(id).addEventListener('change',()=>{if(corners.length===4){try{recalibrate();feedback('Escala actualizada: verifica posiciones de los equipos.');for(const m of machines){[m.x,m.z]=transformPoint(homography,m.imageX,m.imageY).map(n=>Number(n.toFixed(3)));}}catch(e){feedback(e.message)}}render()});
+for(const id of ['width','depth'])$(id).addEventListener('change',()=>{
+ if(corners.length===4){
+  try{
+   const previous=homography;
+   const newHomography=solveHomography(corners,floorCorners(site().width,site().depth));
+   const adjusted=machines.map(m=>({...m,...Object.fromEntries([['x',0],['z',1]].map(([key,index])=>[key,Number(transformPoint(newHomography,m.imageX,m.imageY)[index].toFixed(3))]))}));
+   const candidate=buildProject(adjusted);
+   const problems=validateLayout(candidate).errors;
+   if(problems.length){
+    homography=previous;
+    feedback('Nueva escala presenta '+problems.length+' conflictos. Ajusta tamaño o ubicación antes de exportar.');
+   }else{homography=newHomography;machines=adjusted;feedback('Escala modificada y geometría verificada.')}
+  }catch(e){feedback('No se pudo recalibrar: '+e.message)}
+ }render();
+});
 function download(name,content){
  const u=URL.createObjectURL(new Blob([JSON.stringify(content,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1300);
 }
-$('download').onclick=()=>{try{download('factory-twins-photo-layout.json',{...buildProject(),source:'manual-photo-calibration',estimated:true});feedback('Proyecto exportado para respaldo.');}catch(e){feedback(e.message)}};
+$('download').onclick=()=>{try{const p=buildProject();const n=validateLayout(p).errors.length;if(n)throw Error('Corrige '+n+' conflictos antes de exportar.');download('factory-twins-photo-layout.json',{...p,source:'manual-photo-calibration',estimated:true});feedback('Proyecto validado exportado.')}catch(e){feedback(e.message)}};
 $('openStudio').onclick=()=>{
  try{
   const p=buildProject();
   if(!corners.length||!machines.length)throw Error('Marca las cuatro esquinas y al menos un equipo.');
   const n=validateLayout(p).errors.length;
-  const note=n?' Se detectaron '+n+' observaciones geométricas que deben corregirse.':'';
-  if(!confirm('¿Abrir el modelo en Factory Twins Studio?'+note+' Reemplazará el proyecto actualmente abierto en esta pestaña.'))return;
+  if(n)throw Error('Debes corregir '+n+' conflictos geométricos antes de continuar.');
+  if(!confirm('¿Abrir el modelo validado en Factory Twins Studio? Reemplazará el proyecto actualmente abierto en esta pestaña.'))return;
   sessionStorage.setItem(KEY,JSON.stringify(p));
   location.href='./studio.html';
  }catch(e){feedback(e.message)}
