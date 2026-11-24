@@ -240,3 +240,19 @@ test('region suggestions use normalized image coordinates',()=>{
  assert.ok(r.length<=8);
  for(const b of r){assert.ok(b.x>=0&&b.y>=0&&b.w>0&&b.h>0&&b.x+b.w<=1.0001&&b.y+b.h<=1.0001)}
 });
+
+test('HTML interfaces expose every photo workflow control required by the JS module',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const html=readFileSync(new URL('./photo-mapper.html',import.meta.url),'utf8');
+ for(const id of ['photo','photoImage','imageShell','overlay','width','depth','kind','machineW','machineD','machineH','rotation','markMode','suggestRegions','detectAI','download','openStudio','feedback']){
+  assert.match(html,new RegExp('id="'+id+'"'),'Missing photo interface control: '+id);
+ }
+});
+test('Studio and monitor preserve explicit handoff controls',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const studio=readFileSync(new URL('./studio.html',import.meta.url),'utf8');
+ const monitor=readFileSync(new URL('./operations.html',import.meta.url),'utf8');
+ assert.match(studio,/id="monitor"/);
+ assert.match(monitor,/id="view2"/);assert.match(monitor,/id="view3"/);
+ assert.match(monitor,/id="load"/);assert.match(monitor,/id="ambient"/);
+});
